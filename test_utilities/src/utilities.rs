@@ -17,7 +17,6 @@ use tracing_subscriber;
 
 use crate::aws::KUBE_CLUSTER_ID;
 use hashicorp_vault;
-use qovery_engine::build_platform::local_docker::LocalDocker;
 use qovery_engine::cmd;
 use qovery_engine::constants::{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY};
 use qovery_engine::error::{SimpleError, SimpleErrorKind};
@@ -258,10 +257,6 @@ impl FuncTestsSecrets {
             TERRAFORM_AWS_REGION: Self::select_secret("TERRAFORM_AWS_REGION", secrets.TERRAFORM_AWS_REGION),
         }
     }
-}
-
-pub fn build_platform_local_docker(context: &Context) -> LocalDocker {
-    LocalDocker::new(context.clone(), "oxqlm3r99vwcmvuj", "qovery-local-docker")
 }
 
 pub fn init() -> Instant {

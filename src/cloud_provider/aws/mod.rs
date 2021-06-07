@@ -4,6 +4,7 @@ use rusoto_core::{Client, HttpClient, Region};
 use rusoto_credential::StaticProvider;
 use rusoto_sts::{GetCallerIdentityRequest, Sts, StsClient};
 
+use crate::build_platform::Image;
 use crate::cloud_provider::{CloudProvider, EngineError, Kind, TerraformStateCredentials};
 use crate::constants::{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY};
 use crate::error::EngineErrorCause;

@@ -150,7 +150,8 @@ impl<'a> Transaction<'a> {
                 let build_result = if option.force_build || !self.engine.container_registry().does_image_exists(&image)
                 {
                     // only if the build is forced OR if the image does not exist in the registry
-                    self.engine.build_platform().build(es.to_build(), option.force_build)
+                    // self.engine.build_platform().build(es.to_build(), option.force_build)
+                    Ok(BuildResult::new(es.to_build())) // <-- TODO(benjaminch): to be updated / removed
                 } else {
                     // use the cache
                     Ok(BuildResult::new(es.to_build()))
@@ -173,7 +174,8 @@ impl<'a> Transaction<'a> {
                 let build_result = if option.force_build || !self.engine.container_registry().does_image_exists(&image)
                 {
                     // only if the build is forced OR if the image does not exist in the registry
-                    self.engine.build_platform().build(app.to_build(), option.force_build)
+                    // self.engine.build_platform().build(app.to_build(), option.force_build)
+                    Ok(BuildResult::new(app.to_build())) // <-- TODO(benjaminch): to be updated / removed
                 } else {
                     // use the cache
                     Ok(BuildResult::new(app.to_build()))
