@@ -4,10 +4,7 @@ use crate::error::{EngineError, EngineErrorCause, EngineErrorScope};
 use crate::git::Credentials;
 use crate::models::{Context, Listen};
 
-pub mod local_docker;
-
-pub trait BuildPlatform: Listen {
-    fn context(&self) -> &Context;
+pub trait BuildPlatform {
     fn kind(&self) -> Kind;
     fn id(&self) -> &str;
     fn name(&self) -> &str;
@@ -15,7 +12,6 @@ pub trait BuildPlatform: Listen {
         format!("{} ({})", self.name(), self.id())
     }
     fn is_valid(&self) -> Result<(), EngineError>;
-    fn build(&self, build: Build, force_build: bool) -> Result<BuildResult, EngineError>;
     fn build_error(&self, build: Build) -> Result<BuildResult, EngineError>;
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::BuildPlatform(self.id().to_string(), self.name().to_string())
@@ -24,10 +20,11 @@ pub trait BuildPlatform: Listen {
         EngineError::new(
             cause,
             self.engine_error_scope(),
-            self.context().execution_id(),
+            self.task_execution_id(),
             Some(message),
         )
     }
+    fn task_execution_id(&self) -> &str;
 }
 
 pub struct Build {

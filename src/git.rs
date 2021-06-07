@@ -86,6 +86,7 @@ pub fn checkout_submodules(repo: &Repository) -> Result<(), Error> {
     Ok(())
 }
 
+#[derive(Clone)]
 pub struct Credentials {
     pub login: String,
     pub password: String,

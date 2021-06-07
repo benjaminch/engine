@@ -13,7 +13,7 @@ use qovery_engine::engine::Engine;
 use qovery_engine::models::Context;
 
 use crate::cloudflare::dns_provider_cloudflare;
-use crate::utilities::{build_platform_local_docker, FuncTestsSecrets};
+use crate::utilities::FuncTestsSecrets;
 
 pub const ORGANIZATION_ID: &str = "a8nb94c7fwxzr2ja";
 pub const DO_KUBERNETES_VERSION: &str = "1.18.10-do.3";
@@ -35,8 +35,6 @@ pub fn container_registry_digital_ocean(context: &Context) -> DOCR {
 pub fn docker_cr_do_engine(context: &Context) -> Engine {
     // use DigitalOcean Container Registry
     let container_registry = Box::new(container_registry_digital_ocean(context));
-    // use LocalDocker
-    let build_platform = Box::new(build_platform_local_docker(context));
     // use Digital Ocean
     let cloud_provider = Box::new(cloud_provider_digitalocean(context));
 
@@ -44,7 +42,6 @@ pub fn docker_cr_do_engine(context: &Context) -> Engine {
 
     Engine::new(
         context.clone(),
-        build_platform,
         container_registry,
         cloud_provider,
         dns_provider,

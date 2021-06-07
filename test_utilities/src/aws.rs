@@ -18,7 +18,7 @@ use qovery_engine::models::{
 };
 
 use crate::cloudflare::dns_provider_cloudflare;
-use crate::utilities::{build_platform_local_docker, generate_id, FuncTestsSecrets};
+use crate::utilities::{generate_id, FuncTestsSecrets};
 
 pub const ORGANIZATION_ID: &str = "u8nb94c7fwxzr2jt";
 pub const AWS_REGION_FOR_S3: &str = "us-east-1";
@@ -256,9 +256,6 @@ pub fn docker_ecr_aws_engine(context: &Context) -> Engine {
     // use ECR
     let container_registry = Box::new(container_registry_ecr(context));
 
-    // use LocalDocker
-    let build_platform = Box::new(build_platform_local_docker(context));
-
     // use AWS
     let cloud_provider = Box::new(cloud_provider_aws(context));
 
@@ -266,7 +263,6 @@ pub fn docker_ecr_aws_engine(context: &Context) -> Engine {
 
     Engine::new(
         context.clone(),
-        build_platform,
         container_registry,
         cloud_provider,
         dns_provider,

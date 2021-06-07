@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt;
 use std::process::ExitStatus;
 
 pub type Type = String;
@@ -81,6 +83,14 @@ impl SimpleError {
 impl From<std::io::Error> for SimpleError {
     fn from(err: std::io::Error) -> Self {
         SimpleError::new(SimpleErrorKind::Other, Some(err.to_string()))
+    }
+}
+
+impl Error for SimpleError {}
+
+impl fmt::Display for SimpleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

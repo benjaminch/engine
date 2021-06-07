@@ -1,6 +1,6 @@
 {{- $kubefullname := include "qovery-engine.fullname" . }}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: StatefulSet # Deployment
 metadata:
   name: qovery-engine
   namespace: {{ .Values.namespace }}

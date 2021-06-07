@@ -32,7 +32,7 @@ environmentVariables:
   #CLOUD_PROVIDER: ""
   #REGION: ""
 
-volumes:
+volumes: # remove
   storageClassName: ""
   qoveryWorkspace:
     size: 20Gi
