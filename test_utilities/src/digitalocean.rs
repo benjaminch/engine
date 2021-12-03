@@ -7,7 +7,7 @@ use qovery_engine::cloud_provider::models::NodeGroups;
 use qovery_engine::cloud_provider::TerraformStateCredentials;
 use qovery_engine::container_registry::docr::DOCR;
 use qovery_engine::engine::Engine;
-use qovery_engine::error::EngineError;
+use qovery_engine::error::LegacyEngineError;
 use qovery_engine::models::{Context, Environment};
 
 use crate::cloudflare::dns_provider_cloudflare;
@@ -130,7 +130,7 @@ pub fn clean_environments(
     environments: Vec<Environment>,
     secrets: FuncTestsSecrets,
     _region: Region,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let do_cr = DOCR::new(
         context.clone(),
         "test",

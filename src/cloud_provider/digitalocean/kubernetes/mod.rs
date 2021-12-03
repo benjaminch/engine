@@ -33,7 +33,9 @@ use crate::cmd::terraform::{terraform_exec, terraform_init_validate_plan_apply, 
 use crate::deletion_utilities::{get_firsts_namespaces_to_delete, get_qovery_managed_namespaces};
 use crate::dns_provider::DnsProvider;
 use crate::error::EngineErrorCause::Internal;
-use crate::error::{cast_simple_error_to_engine_error, EngineError, EngineErrorCause, EngineErrorScope, SimpleError};
+use crate::error::{
+    cast_simple_error_to_engine_error, EngineErrorCause, EngineErrorScope, LegacyEngineError, SimpleError,
+};
 use crate::models::{
     Action, Context, Features, Listen, Listener, Listeners, ListenersHelper, ProgressInfo, ProgressLevel,
     ProgressScope, ToHelmString,
@@ -109,12 +111,12 @@ impl<'a> DOKS<'a> {
         dns_provider: &'a dyn DnsProvider,
         nodes_groups: Vec<NodeGroups>,
         options: DoksOptions,
-    ) -> Result<Self, EngineError> {
+    ) -> Result<Self, LegacyEngineError> {
         let template_directory = format!("{}/digitalocean/bootstrap", context.lib_root_dir());
 
         for node_group in &nodes_groups {
             if DoInstancesType::from_str(node_group.instance_type.as_str()).is_err() {
-                return Err(EngineError::new(
+                return Err(LegacyEngineError::new(
                     EngineErrorCause::Internal,
                     EngineErrorScope::Engine,
                     context.execution_id(),
@@ -167,7 +169,7 @@ impl<'a> DOKS<'a> {
     }
 
     // create a context to render tf files (terraform) contained in lib/digitalocean/
-    fn tera_context(&self) -> Result<TeraContext, EngineError> {
+    fn tera_context(&self) -> Result<TeraContext, LegacyEngineError> {
         let mut context = TeraContext::new();
 
         // Digital Ocean
@@ -193,7 +195,7 @@ impl<'a> DOKS<'a> {
                             match get_do_random_available_subnet_from_api(&self.cloud_provider.token(), self.region) {
                                 Ok(x) => x,
                                 Err(e) => {
-                                    return Err(EngineError {
+                                    return Err(LegacyEngineError {
                                         cause: EngineErrorCause::Internal,
                                         scope: EngineErrorScope::Engine,
                                         execution_id: self.context.execution_id().to_string(),
@@ -206,7 +208,7 @@ impl<'a> DOKS<'a> {
                         Some(vpc) => vpc.ip_range,
                     },
                     Err(e) => {
-                        return Err(EngineError {
+                        return Err(LegacyEngineError {
                             cause: EngineErrorCause::Internal,
                             scope: EngineErrorScope::Engine,
                             execution_id: self.context.execution_id().to_string(),
@@ -268,7 +270,7 @@ impl<'a> DOKS<'a> {
                 // new cluster, we check the wished version is supported by DO
                 None => match get_do_latest_doks_slug_from_api(self.cloud_provider.token(), self.version()) {
                     Ok(version) => match version {
-                        None => return Err(EngineError {
+                        None => return Err(LegacyEngineError {
                             cause: EngineErrorCause::Internal,
                             scope: EngineErrorScope::Engine,
                             execution_id: self.context.execution_id().to_string(),
@@ -276,7 +278,7 @@ impl<'a> DOKS<'a> {
                         }),
                         Some(v) => v,
                     }
-                    Err(e) => return Err(EngineError {
+                    Err(e) => return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: self.context.execution_id().to_string(),
@@ -286,7 +288,7 @@ impl<'a> DOKS<'a> {
                 // use the same deployed version number
                 Some(x) => x.version
             }
-            Err(e) => return Err(EngineError {
+            Err(e) => return Err(LegacyEngineError {
                 cause: EngineErrorCause::Internal,
                 scope: EngineErrorScope::Engine,
                 execution_id: self.context.execution_id().to_string(),
@@ -443,7 +445,7 @@ impl<'a> DOKS<'a> {
         get_doks_info_from_name(json_content.as_str(), format!("qovery-{}", self.id().to_string()))
     }
 
-    fn create(&self) -> Result<(), EngineError> {
+    fn create(&self) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
 
         listeners_helper.deployment_in_progress(ProgressInfo::new(
@@ -496,7 +498,7 @@ impl<'a> DOKS<'a> {
                             match terraform_exec(temp_dir.as_str(), vec!["state", "rm", &entry]) {
                                 Ok(_) => info!("successfully removed {}", &entry),
                                 Err(e) => {
-                                    return Err(EngineError {
+                                    return Err(LegacyEngineError {
                                         cause: EngineErrorCause::Internal,
                                         scope: EngineErrorScope::Engine,
                                         execution_id: self.context.execution_id().to_string(),
@@ -601,7 +603,7 @@ impl<'a> DOKS<'a> {
         let doks_id =
             match self.get_doks_info_from_name_api() {
                 Ok(info) => match info {
-                    None => return Err(EngineError {
+                    None => return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: self.context.execution_id().to_string(),
@@ -613,7 +615,7 @@ impl<'a> DOKS<'a> {
                     Some(cluster) => cluster.id,
                 },
                 Err(e) => {
-                    return Err(EngineError {
+                    return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: self.context.execution_id().to_string(),
@@ -686,7 +688,7 @@ impl<'a> DOKS<'a> {
                 self.cloud_provider.credentials_environment_variables(),
             ) {
                 Ok(x) => match x {
-                    None => return Err(EngineError {
+                    None => return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: self.context.execution_id().to_string(),
@@ -695,7 +697,7 @@ impl<'a> DOKS<'a> {
                     Some(uuid) => uuid,
                 },
                 Err(e) => {
-                    return Err(EngineError {
+                    return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: self.context.execution_id().to_string(),
@@ -709,7 +711,7 @@ impl<'a> DOKS<'a> {
         let nginx_ingress_loadbalancer_ip = match do_get_load_balancer_ip(self.cloud_provider.token(), nginx_ingress_loadbalancer_id.as_str()) {
                 Ok(x) => x.to_string(),
                 Err(e) => {
-                    return Err(EngineError {
+                    return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: self.context.execution_id().to_string(),
@@ -755,7 +757,7 @@ impl<'a> DOKS<'a> {
             &load_balancer_dns_hostname,
         ) {
             Ok(_) => Ok(()),
-            Err(e) => Err(EngineError {
+            Err(e) => Err(LegacyEngineError {
                 cause: EngineErrorCause::Internal,
                 scope: EngineErrorScope::Engine,
                 execution_id: self.context.execution_id().to_string(),
@@ -767,7 +769,7 @@ impl<'a> DOKS<'a> {
         }
     }
 
-    fn create_error(&self) -> Result<(), EngineError> {
+    fn create_error(&self) -> Result<(), LegacyEngineError> {
         let kubeconfig_file = match self.config_file() {
             Ok(x) => x.0,
             Err(e) => {
@@ -788,27 +790,27 @@ impl<'a> DOKS<'a> {
         ))
     }
 
-    fn upgrade_error(&self) -> Result<(), EngineError> {
+    fn upgrade_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn downgrade(&self) -> Result<(), EngineError> {
+    fn downgrade(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn downgrade_error(&self) -> Result<(), EngineError> {
+    fn downgrade_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn pause(&self) -> Result<(), EngineError> {
+    fn pause(&self) -> Result<(), LegacyEngineError> {
         todo!()
     }
 
-    fn pause_error(&self) -> Result<(), EngineError> {
+    fn pause_error(&self) -> Result<(), LegacyEngineError> {
         todo!()
     }
 
-    fn delete(&self) -> Result<(), EngineError> {
+    fn delete(&self) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
         let mut skip_kubernetes_step = false;
         self.send_to_customer(
@@ -951,7 +953,7 @@ impl<'a> DOKS<'a> {
                 &kubernetes_config_file_path,
                 self.cloud_provider().credentials_environment_variables(),
             ) {
-                return Err(EngineError::new(
+                return Err(LegacyEngineError::new(
                     Internal,
                     self.engine_error_scope(),
                     self.context().execution_id(),
@@ -1062,7 +1064,7 @@ impl<'a> DOKS<'a> {
             }
             Err(Operation { error, .. }) => return Err(error),
             Err(retry::Error::Internal(msg)) => {
-                return Err(EngineError::new(
+                return Err(LegacyEngineError::new(
                     EngineErrorCause::Internal,
                     self.engine_error_scope(),
                     self.context().execution_id(),
@@ -1079,7 +1081,7 @@ impl<'a> DOKS<'a> {
         Ok(())
     }
 
-    fn delete_error(&self) -> Result<(), EngineError> {
+    fn delete_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
@@ -1133,12 +1135,12 @@ impl<'a> Kubernetes for DOKS<'a> {
         &self.spaces
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_create(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1149,7 +1151,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_create_error(&self) -> Result<(), EngineError> {
+    fn on_create_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1159,7 +1161,7 @@ impl<'a> Kubernetes for DOKS<'a> {
         send_progress_on_long_task(self, Action::Create, || self.create_error())
     }
 
-    fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), EngineError> {
+    fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
         self.send_to_customer(
             format!(
@@ -1240,7 +1242,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_upgrade(&self) -> Result<(), EngineError> {
+    fn on_upgrade(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1251,7 +1253,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_upgrade_error(&self) -> Result<(), EngineError> {
+    fn on_upgrade_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1262,7 +1264,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_downgrade(&self) -> Result<(), EngineError> {
+    fn on_downgrade(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1273,7 +1275,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_downgrade_error(&self) -> Result<(), EngineError> {
+    fn on_downgrade_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1284,7 +1286,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_pause(&self) -> Result<(), EngineError> {
+    fn on_pause(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1295,7 +1297,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_pause_error(&self) -> Result<(), EngineError> {
+    fn on_pause_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1306,7 +1308,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_delete(&self) -> Result<(), EngineError> {
+    fn on_delete(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1317,7 +1319,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn on_delete_error(&self) -> Result<(), EngineError> {
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1328,7 +1330,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn deploy_environment(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn deploy_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1339,7 +1341,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn deploy_environment_error(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn deploy_environment_error(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1350,7 +1352,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn pause_environment(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn pause_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1361,7 +1363,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn pause_environment_error(&self, _environment: &Environment) -> Result<(), EngineError> {
+    fn pause_environment_error(&self, _environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1372,7 +1374,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn delete_environment(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn delete_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1383,7 +1385,7 @@ impl<'a> Kubernetes for DOKS<'a> {
     }
 
     #[named]
-    fn delete_environment_error(&self, _environment: &Environment) -> Result<(), EngineError> {
+    fn delete_environment_error(&self, _environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),

@@ -1,7 +1,7 @@
 use std::any::Any;
 use uuid::Uuid;
 
-use crate::cloud_provider::{CloudProvider, EngineError, Kind, TerraformStateCredentials};
+use crate::cloud_provider::{CloudProvider, Kind, LegacyEngineError, TerraformStateCredentials};
 use crate::constants::{SCALEWAY_ACCESS_KEY, SCALEWAY_DEFAULT_PROJECT_ID, SCALEWAY_SECRET_KEY};
 use crate::models::{Context, Listen, Listener, Listeners};
 
@@ -87,7 +87,7 @@ impl CloudProvider for Scaleway {
         todo!()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         // TODO(benjaminch): To be implemented
         Ok(())
     }

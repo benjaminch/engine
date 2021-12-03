@@ -1,3 +1,4 @@
+use crate::errors::{EngineError, Transmitter};
 use std::process::ExitStatus;
 
 pub type Type = String;
@@ -5,20 +6,20 @@ pub type Id = String;
 pub type Name = String;
 
 #[derive(Debug)]
-pub struct EngineError {
+pub struct LegacyEngineError {
     pub cause: EngineErrorCause,
     pub scope: EngineErrorScope,
     pub execution_id: String,
     pub message: Option<String>,
 }
 
-impl EngineError {
+impl LegacyEngineError {
     pub fn new<T, S>(cause: EngineErrorCause, scope: EngineErrorScope, execution_id: T, message: Option<S>) -> Self
     where
         T: Into<String>,
         S: Into<String>,
     {
-        EngineError {
+        LegacyEngineError {
             cause,
             scope,
             execution_id: execution_id.into(),
@@ -43,6 +44,24 @@ pub enum EngineErrorScope {
     Database(Id, Type, Name),
     Application(Id, Name),
     Router(Id, Name),
+}
+
+impl From<Transmitter> for EngineErrorScope {
+    fn from(transmitter: Transmitter) -> Self {
+        match transmitter {
+            Transmitter::Engine => EngineErrorScope::Engine,
+            Transmitter::BuildPlatform(id, name) => EngineErrorScope::BuildPlatform(id, name),
+            Transmitter::ContainerRegistry(id, name) => EngineErrorScope::ContainerRegistry(id, name),
+            Transmitter::CloudProvider(id, name) => EngineErrorScope::CloudProvider(id, name),
+            Transmitter::Kubernetes(id, name) => EngineErrorScope::Kubernetes(id, name),
+            Transmitter::DnsProvider(id, name) => EngineErrorScope::DnsProvider(id, name),
+            Transmitter::ObjectStorage(id, name) => EngineErrorScope::ObjectStorage(id, name),
+            Transmitter::Environment(id, name) => EngineErrorScope::Environment(id, name),
+            Transmitter::Database(id, db_type, name) => EngineErrorScope::Database(id, db_type, name),
+            Transmitter::Application(id, name) => EngineErrorScope::Application(id, name),
+            Transmitter::Router(id, name) => EngineErrorScope::Router(id, name),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -87,7 +106,7 @@ pub fn cast_simple_error_to_engine_error<X, T: Into<String>>(
     scope: EngineErrorScope,
     execution_id: T,
     input: Result<X, SimpleError>,
-) -> Result<X, EngineError> {
+) -> Result<X, LegacyEngineError> {
     match input {
         Err(simple_error) => {
             let message = match simple_error.kind {
@@ -99,7 +118,7 @@ pub fn cast_simple_error_to_engine_error<X, T: Into<String>>(
                 SimpleErrorKind::Other => simple_error.message.unwrap_or("<no message>".into()),
             };
 
-            Err(EngineError::new(
+            Err(LegacyEngineError::new(
                 EngineErrorCause::Internal,
                 scope,
                 execution_id,

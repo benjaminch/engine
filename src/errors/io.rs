@@ -6,20 +6,16 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize)]
-pub enum LogLevel {
-    Debug,
-    Info,
+pub enum Severity {
     Warning,
-    Error,
+    Critical,
 }
 
-impl From<LogLevel> for errors::LogLevel {
-    fn from(log_level: LogLevel) -> Self {
-        match log_level {
-            LogLevel::Debug => errors::LogLevel::Debug,
-            LogLevel::Info => errors::LogLevel::Info,
-            LogLevel::Warning => errors::LogLevel::Warning,
-            LogLevel::Error => errors::LogLevel::Error,
+impl From<Severity> for errors::Severity {
+    fn from(severity: Severity) -> Self {
+        match severity {
+            Severity::Warning => errors::Severity::Warning,
+            Severity::Critical => errors::Severity::Critical,
         }
     }
 }
@@ -79,6 +75,43 @@ impl From<EnvironmentStep> for errors::EnvironmentStep {
     }
 }
 
+type TransmitterId = String;
+type TransmitterName = String;
+type TransmitterType = String;
+
+#[derive(Serialize, Deserialize)]
+pub enum Transmitter {
+    Engine,
+    BuildPlatform(TransmitterId, TransmitterName),
+    ContainerRegistry(TransmitterId, TransmitterName),
+    CloudProvider(TransmitterId, TransmitterName),
+    Kubernetes(TransmitterId, TransmitterName),
+    DnsProvider(TransmitterId, TransmitterName),
+    ObjectStorage(TransmitterId, TransmitterName),
+    Environment(TransmitterId, TransmitterName),
+    Database(TransmitterId, TransmitterType, TransmitterName),
+    Application(TransmitterId, TransmitterName),
+    Router(TransmitterId, TransmitterName),
+}
+
+impl From<Transmitter> for errors::Transmitter {
+    fn from(transmitter: Transmitter) -> errors::Transmitter {
+        match transmitter {
+            Transmitter::Engine => errors::Transmitter::Engine,
+            Transmitter::BuildPlatform(id, name) => errors::Transmitter::BuildPlatform(id, name),
+            Transmitter::ContainerRegistry(id, name) => errors::Transmitter::ContainerRegistry(id, name),
+            Transmitter::CloudProvider(id, name) => errors::Transmitter::CloudProvider(id, name),
+            Transmitter::Kubernetes(id, name) => errors::Transmitter::Kubernetes(id, name),
+            Transmitter::DnsProvider(id, name) => errors::Transmitter::DnsProvider(id, name),
+            Transmitter::ObjectStorage(id, name) => errors::Transmitter::ObjectStorage(id, name),
+            Transmitter::Environment(id, name) => errors::Transmitter::Environment(id, name),
+            Transmitter::Database(id, db_type, name) => errors::Transmitter::Database(id, db_type, name),
+            Transmitter::Application(id, name) => errors::Transmitter::Application(id, name),
+            Transmitter::Router(id, name) => errors::Transmitter::Router(id, name),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum Tag {
     UnsupportedInstanceType(String),
@@ -99,8 +132,9 @@ struct UserEngineError {
     cluster_id: String,
     execution_id: String,
     tag: Tag,
+    transmitter: Transmitter,
+    severity: Severity,
     stage: Stage,
-    log_level: LogLevel,
     log_message: String,
     raw_message_safe: Option<String>,
     link: Option<String>,
@@ -115,9 +149,55 @@ impl From<UserEngineError> for errors::UserEngineError {
             QoveryIdentifier::new(e.cluster_id),
             QoveryIdentifier::new(e.execution_id),
             errors::Tag::from(e.tag),
+            errors::Transmitter::from(e.transmitter),
             errors::Stage::from(e.stage),
-            errors::LogLevel::from(e.log_level),
+            errors::Severity::from(e.severity),
             e.log_message,
+            e.raw_message_safe,
+            match e.link {
+                Some(url) => match Url::from_str(&url) {
+                    Ok(url) => Some(url),
+                    Err(_) => None,
+                },
+                None => None,
+            },
+            e.hint_message,
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EngineError {
+    provider_kind: Kind,
+    tag: Tag,
+    organisation_id: String,
+    cluster_id: String,
+    execution_id: String,
+    severity: Severity,
+    transmitter: Transmitter,
+    stage: Stage,
+    qovery_log_message: String,
+    user_log_message: String,
+    raw_message: Option<String>,
+    raw_message_safe: Option<String>,
+    link: Option<String>,
+    hint_message: Option<String>,
+}
+
+impl From<EngineError> for errors::EngineError {
+    fn from(e: EngineError) -> Self {
+        errors::EngineError::new(
+            e.provider_kind,
+            errors::Tag::from(e.tag),
+            QoveryIdentifier::new(e.organisation_id),
+            QoveryIdentifier::new(e.cluster_id),
+            QoveryIdentifier::new(e.execution_id),
+            errors::Stage::from(e.stage),
+            errors::Transmitter::from(e.transmitter),
+            errors::Severity::from(e.severity),
+            e.qovery_log_message,
+            e.user_log_message,
+            e.raw_message,
             e.raw_message_safe,
             match e.link {
                 Some(url) => match Url::from_str(&url) {

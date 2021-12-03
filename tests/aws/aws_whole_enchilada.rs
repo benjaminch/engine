@@ -4,13 +4,16 @@ use qovery_engine::cloud_provider::Kind;
 use qovery_engine::models::EnvironmentAction;
 use test_utilities::aws::{AWS_KUBERNETES_MAJOR_VERSION, AWS_KUBERNETES_MINOR_VERSION};
 use test_utilities::common::{cluster_test, ClusterDomain, ClusterTestType};
-use test_utilities::utilities::{context, engine_run_test, generate_cluster_id, generate_id, FuncTestsSecrets};
+use test_utilities::utilities::{
+    context, engine_run_test, generate_cluster_id, generate_id, log_manager, FuncTestsSecrets,
+};
 
 #[cfg(feature = "test-aws-whole-enchilada")]
 #[named]
 #[test]
 fn create_upgrade_and_destroy_eks_cluster_with_env_in_eu_west_3() {
     let context = context();
+    let log_manager = log_manager();
     let secrets = FuncTestsSecrets::new();
     let region = "eu-west-3";
     let organization_id = generate_id();
@@ -35,6 +38,7 @@ fn create_upgrade_and_destroy_eks_cluster_with_env_in_eu_west_3() {
     engine_run_test(|| {
         cluster_test(
             function_name!(),
+            &log_manager,
             Kind::Aws,
             context.clone(),
             region,

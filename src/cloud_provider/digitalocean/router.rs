@@ -8,7 +8,7 @@ use crate::cloud_provider::service::{
 use crate::cloud_provider::utilities::{check_cname_for, print_action, sanitize_name};
 use crate::cloud_provider::DeploymentTarget;
 use crate::cmd::helm::Timeout;
-use crate::error::{cast_simple_error_to_engine_error, EngineError, EngineErrorCause, EngineErrorScope};
+use crate::error::{cast_simple_error_to_engine_error, EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::models::{Context, Listen, Listener, Listeners};
 use ::function_name::named;
 
@@ -112,7 +112,7 @@ impl Service for Router {
         false
     }
 
-    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, EngineError> {
+    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, LegacyEngineError> {
         let kubernetes = target.kubernetes;
         let environment = target.environment;
         let mut context = default_tera_context(self, kubernetes, environment);
@@ -288,7 +288,7 @@ impl StatelessService for Router {}
 
 impl Create for Router {
     #[named]
-    fn on_create(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -336,7 +336,7 @@ impl Create for Router {
         Ok(())
     }
 
-    fn on_create_check(&self) -> Result<(), EngineError> {
+    fn on_create_check(&self) -> Result<(), LegacyEngineError> {
         use crate::cloud_provider::service::Router;
 
         // check non custom domains
@@ -366,7 +366,7 @@ impl Create for Router {
     }
 
     #[named]
-    fn on_create_error(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -382,7 +382,7 @@ impl Create for Router {
 
 impl Pause for Router {
     #[named]
-    fn on_pause(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -392,12 +392,12 @@ impl Pause for Router {
         Ok(())
     }
 
-    fn on_pause_check(&self) -> Result<(), EngineError> {
+    fn on_pause_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -410,7 +410,7 @@ impl Pause for Router {
 
 impl Delete for Router {
     #[named]
-    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -420,12 +420,12 @@ impl Delete for Router {
         delete_router(target, self, false)
     }
 
-    fn on_delete_check(&self) -> Result<(), EngineError> {
+    fn on_delete_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_delete_error(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),

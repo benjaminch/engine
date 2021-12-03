@@ -4,7 +4,7 @@ use retry::delay::Fibonacci;
 use retry::{Error, OperationResult};
 
 use crate::constants::{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY};
-use crate::error::{cast_simple_error_to_engine_error, EngineError, EngineErrorCause};
+use crate::error::{cast_simple_error_to_engine_error, EngineErrorCause, LegacyEngineError};
 use crate::models::{Context, StringPath};
 use crate::object_storage::{Kind, ObjectStorage};
 
@@ -52,12 +52,12 @@ impl ObjectStorage for S3 {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         // TODO check valid credentials
         Ok(())
     }
 
-    fn create_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn create_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         cast_simple_error_to_engine_error(
             self.engine_error_scope(),
             self.context().execution_id(),
@@ -69,7 +69,7 @@ impl ObjectStorage for S3 {
         )
     }
 
-    fn delete_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn delete_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         cast_simple_error_to_engine_error(
             self.engine_error_scope(),
             self.context().execution_id(),
@@ -87,7 +87,12 @@ impl ObjectStorage for S3 {
         )
     }
 
-    fn get(&self, bucket_name: &str, object_key: &str, use_cache: bool) -> Result<(StringPath, File), EngineError> {
+    fn get(
+        &self,
+        bucket_name: &str,
+        object_key: &str,
+        use_cache: bool,
+    ) -> Result<(StringPath, File), LegacyEngineError> {
         let workspace_directory = crate::fs::workspace_directory(
             self.context().workspace_root_dir(),
             self.context().execution_id(),
@@ -150,7 +155,7 @@ impl ObjectStorage for S3 {
         }
     }
 
-    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), EngineError> {
+    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), LegacyEngineError> {
         cast_simple_error_to_engine_error(
             self.engine_error_scope(),
             self.context().execution_id(),

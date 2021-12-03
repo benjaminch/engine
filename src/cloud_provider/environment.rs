@@ -1,5 +1,5 @@
 use crate::cloud_provider::service::{Action, StatefulService, StatelessService};
-use crate::error::EngineError;
+use crate::error::LegacyEngineError;
 use crate::unit_conversion::cpu_string_to_float;
 
 pub struct Environment {
@@ -36,7 +36,7 @@ impl Environment {
         self.namespace.as_str()
     }
 
-    pub fn is_valid(&self) -> Result<(), EngineError> {
+    pub fn is_valid(&self) -> Result<(), LegacyEngineError> {
         for service in self.stateful_services.iter() {
             if let Err(err) = service.is_valid() {
                 return Err(err);

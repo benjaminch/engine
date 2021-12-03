@@ -12,7 +12,7 @@ use crate::build_platform::Image;
 use crate::cmd;
 use crate::container_registry::docker::docker_tag_and_push_image;
 use crate::container_registry::{ContainerRegistry, Kind, PushResult};
-use crate::error::{EngineError, EngineErrorCause};
+use crate::error::{EngineErrorCause, LegacyEngineError};
 use crate::models::{
     Context, Listen, Listener, Listeners, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope,
 };
@@ -112,7 +112,7 @@ impl ECR {
         }
     }
 
-    fn push_image(&self, dest: String, image: &Image) -> Result<PushResult, EngineError> {
+    fn push_image(&self, dest: String, image: &Image) -> Result<PushResult, LegacyEngineError> {
         // READ https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html
         // docker tag e9ae3c220b23 aws_account_id.dkr.ecr.region.amazonaws.com/my-web-app
 
@@ -136,7 +136,7 @@ impl ECR {
         }
     }
 
-    fn create_repository(&self, image: &Image) -> Result<Repository, EngineError> {
+    fn create_repository(&self, image: &Image) -> Result<Repository, LegacyEngineError> {
         let repository_name = image.name.as_str();
         info!("creating ECR repository {}", &repository_name);
 
@@ -253,7 +253,7 @@ impl ECR {
         }
     }
 
-    fn get_or_create_repository(&self, image: &Image) -> Result<Repository, EngineError> {
+    fn get_or_create_repository(&self, image: &Image) -> Result<Repository, LegacyEngineError> {
         // check if the repository already exists
         let repository = self.get_repository(image);
         if repository.is_some() {
@@ -282,7 +282,7 @@ impl ContainerRegistry for ECR {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         let client = StsClient::new_with_client(self.client(), Region::default());
         let s = block_on(client.get_caller_identity(GetCallerIdentityRequest::default()));
 
@@ -298,20 +298,20 @@ impl ContainerRegistry for ECR {
         }
     }
 
-    fn on_create(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError> {
         info!("ECR.on_create() called");
         Ok(())
     }
 
-    fn on_create_error(&self) -> Result<(), EngineError> {
+    fn on_create_error(&self) -> Result<(), LegacyEngineError> {
         unimplemented!()
     }
 
-    fn on_delete(&self) -> Result<(), EngineError> {
+    fn on_delete(&self) -> Result<(), LegacyEngineError> {
         unimplemented!()
     }
 
-    fn on_delete_error(&self) -> Result<(), EngineError> {
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError> {
         unimplemented!()
     }
 
@@ -319,7 +319,7 @@ impl ContainerRegistry for ECR {
         self.get_image(image).is_some()
     }
 
-    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, EngineError> {
+    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, LegacyEngineError> {
         let r = block_on(
             self.ecr_client()
                 .get_authorization_token(GetAuthorizationTokenRequest::default()),
@@ -451,7 +451,7 @@ impl ContainerRegistry for ECR {
         self.push_image(dest, image)
     }
 
-    fn push_error(&self, image: &Image) -> Result<PushResult, EngineError> {
+    fn push_error(&self, image: &Image) -> Result<PushResult, LegacyEngineError> {
         // TODO change this
         Ok(PushResult { image: image.clone() })
     }

@@ -5,7 +5,7 @@ use chrono::Duration;
 use sysinfo::{Disk, DiskExt, SystemExt};
 
 use crate::build_platform::{Build, BuildPlatform, BuildResult, Image, Kind};
-use crate::error::{EngineError, EngineErrorCause, SimpleError, SimpleErrorKind};
+use crate::error::{EngineErrorCause, LegacyEngineError, SimpleError, SimpleErrorKind};
 use crate::fs::workspace_directory;
 use crate::git::checkout_submodules;
 use crate::models::{
@@ -41,7 +41,7 @@ impl LocalDocker {
         }
     }
 
-    fn image_does_exist(&self, image: &Image) -> Result<bool, EngineError> {
+    fn image_does_exist(&self, image: &Image) -> Result<bool, LegacyEngineError> {
         Ok(matches!(
             crate::cmd::utilities::exec(
                 "docker",
@@ -67,7 +67,7 @@ impl LocalDocker {
         env_var_args: Vec<String>,
         use_build_cache: bool,
         lh: &ListenersHelper,
-    ) -> Result<BuildResult, EngineError> {
+    ) -> Result<BuildResult, LegacyEngineError> {
         let mut docker_args = if !use_build_cache {
             vec!["build", "--no-cache"]
         } else {
@@ -156,7 +156,7 @@ impl LocalDocker {
         env_var_args: Vec<String>,
         use_build_cache: bool,
         lh: &ListenersHelper,
-    ) -> Result<BuildResult, EngineError> {
+    ) -> Result<BuildResult, LegacyEngineError> {
         let name_with_tag = build.image.name_with_tag();
 
         let args = self.context.docker_build_options();
@@ -288,7 +288,7 @@ impl BuildPlatform for LocalDocker {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         if !crate::cmd::utilities::does_binary_exist("docker") {
             return Err(self.engine_error(EngineErrorCause::Internal, String::from("docker binary not found")));
         }
@@ -300,7 +300,7 @@ impl BuildPlatform for LocalDocker {
         Ok(())
     }
 
-    fn build(&self, build: Build, force_build: bool) -> Result<BuildResult, EngineError> {
+    fn build(&self, build: Build, force_build: bool) -> Result<BuildResult, LegacyEngineError> {
         info!("LocalDocker.build() called for {}", self.name());
 
         let listeners_helper = ListenersHelper::new(&self.listeners);
@@ -471,7 +471,7 @@ impl BuildPlatform for LocalDocker {
         result
     }
 
-    fn build_error(&self, build: Build) -> Result<BuildResult, EngineError> {
+    fn build_error(&self, build: Build) -> Result<BuildResult, LegacyEngineError> {
         warn!("LocalDocker.build_error() called for {}", self.name());
 
         let listener_helper = ListenersHelper::new(&self.listeners);

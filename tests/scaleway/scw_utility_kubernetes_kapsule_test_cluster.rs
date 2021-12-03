@@ -1,7 +1,7 @@
 extern crate test_utilities;
 
 use self::test_utilities::cloudflare::dns_provider_cloudflare;
-use self::test_utilities::utilities::{context, engine_run_test, init, FuncTestsSecrets};
+use self::test_utilities::utilities::{context, engine_run_test, init, log_manager, FuncTestsSecrets};
 use ::function_name::named;
 use tracing::{span, Level};
 
@@ -27,6 +27,7 @@ fn create_scaleway_kubernetes_kapsule_test_cluster() {
         let span = span!(Level::INFO, "utility", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let engine = Scaleway::docker_cr_engine(&context);
         let session = engine.session().unwrap();
@@ -42,6 +43,7 @@ fn create_scaleway_kubernetes_kapsule_test_cluster() {
             .expect("SCALEWAY_TEST_CLUSTER_ID");
 
         let kubernetes = Kapsule::new(
+            &log_manager,
             context.clone(),
             cluster_id.to_string(),
             uuid::Uuid::new_v4(),
@@ -86,6 +88,7 @@ fn destroy_scaleway_kubernetes_kapsule_test_cluster() {
         let span = span!(Level::INFO, "utility", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let engine = Scaleway::docker_cr_engine(&context);
         let session = engine.session().unwrap();
@@ -101,6 +104,7 @@ fn destroy_scaleway_kubernetes_kapsule_test_cluster() {
             .expect("SCALEWAY_TEST_CLUSTER_ID is not set");
 
         let kubernetes = Kapsule::new(
+            &log_manager,
             context.clone(),
             cluster_id.to_string(),
             uuid::Uuid::new_v4(),

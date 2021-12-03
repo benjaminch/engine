@@ -15,7 +15,7 @@ use crate::cloud_provider::utilities::{
 use crate::cloud_provider::DeploymentTarget;
 use crate::cmd::helm::Timeout;
 use crate::cmd::kubectl;
-use crate::error::{EngineError, EngineErrorCause, EngineErrorScope, StringError};
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError, StringError};
 use crate::models::DatabaseMode::MANAGED;
 use crate::models::{Context, DatabaseKind, Listen, Listener, Listeners};
 use ::function_name::named;
@@ -66,7 +66,7 @@ impl MySQL {
         }
     }
 
-    fn matching_correct_version(&self, is_managed_services: bool) -> Result<String, EngineError> {
+    fn matching_correct_version(&self, is_managed_services: bool) -> Result<String, LegacyEngineError> {
         check_service_version(get_mysql_version(self.version(), is_managed_services), self)
     }
 
@@ -145,7 +145,7 @@ impl Service for MySQL {
         self.options.publicly_accessible
     }
 
-    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, EngineError> {
+    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, LegacyEngineError> {
         let kubernetes = target.kubernetes;
         let environment = target.environment;
         let mut context = default_tera_context(self, kubernetes, environment);
@@ -169,7 +169,7 @@ impl Service for MySQL {
             let parameter_group_family = match get_parameter_group_from_version(&version, DatabaseKind::Mysql) {
                 Ok(v) => v,
                 Err(e) => {
-                    return Err(EngineError {
+                    return Err(LegacyEngineError {
                         cause: EngineErrorCause::Internal,
                         scope: EngineErrorScope::Engine,
                         execution_id: (&self.context.execution_id()).to_string(),
@@ -265,7 +265,7 @@ impl Terraform for MySQL {
 
 impl Create for MySQL {
     #[named]
-    fn on_create(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -278,12 +278,12 @@ impl Create for MySQL {
         })
     }
 
-    fn on_create_check(&self) -> Result<(), EngineError> {
+    fn on_create_check(&self) -> Result<(), LegacyEngineError> {
         self.check_domains(self.listeners.clone(), vec![self.fqdn.as_str()])
     }
 
     #[named]
-    fn on_create_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -297,7 +297,7 @@ impl Create for MySQL {
 
 impl Pause for MySQL {
     #[named]
-    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -310,12 +310,12 @@ impl Pause for MySQL {
         })
     }
 
-    fn on_pause_check(&self) -> Result<(), EngineError> {
+    fn on_pause_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -328,7 +328,7 @@ impl Pause for MySQL {
 
 impl Delete for MySQL {
     #[named]
-    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -341,12 +341,12 @@ impl Delete for MySQL {
         })
     }
 
-    fn on_delete_check(&self) -> Result<(), EngineError> {
+    fn on_delete_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_delete_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -433,6 +433,8 @@ mod tests_mysql {
 
         let database = MySQL::new(
             Context::new(
+                "".to_string(),
+                "".to_string(),
                 "".to_string(),
                 "".to_string(),
                 "".to_string(),

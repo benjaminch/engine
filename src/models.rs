@@ -1006,6 +1006,8 @@ impl<'a> ListenersHelper<'a> {
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Context {
+    organization_id: String,
+    cluster_id: String,
     execution_id: String,
     workspace_root_dir: String,
     lib_root_dir: String,
@@ -1044,6 +1046,8 @@ impl Clone2 for Context {
 
 impl Context {
     pub fn new(
+        organization_id: String,
+        cluster_id: String,
         execution_id: String,
         workspace_root_dir: String,
         lib_root_dir: String,
@@ -1053,6 +1057,8 @@ impl Context {
         metadata: Option<Metadata>,
     ) -> Self {
         Context {
+            organization_id,
+            cluster_id,
             execution_id,
             workspace_root_dir,
             lib_root_dir,
@@ -1065,6 +1071,14 @@ impl Context {
 
     pub fn execution_id(&self) -> &str {
         self.execution_id.as_str()
+    }
+
+    pub fn organization_id(&self) -> &str {
+        &self.organization_id
+    }
+
+    pub fn cluster_id(&self) -> &str {
+        &self.cluster_id
     }
 
     pub fn workspace_root_dir(&self) -> &str {

@@ -17,7 +17,7 @@ use crate::cloud_provider::DeploymentTarget;
 use crate::cmd::helm::Timeout;
 use crate::cmd::kubectl::ScalingKind::{Deployment, Statefulset};
 use crate::error::EngineErrorCause::Internal;
-use crate::error::{EngineError, EngineErrorScope};
+use crate::error::{EngineErrorScope, LegacyEngineError};
 use crate::models::{Context, Listen, Listener, Listeners, ListenersHelper};
 use ::function_name::named;
 
@@ -173,7 +173,7 @@ impl Service for Application {
         self.private_port.is_some()
     }
 
-    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, EngineError> {
+    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, LegacyEngineError> {
         let kubernetes = target.kubernetes;
         let environment = target.environment;
         let mut context = default_tera_context(self, kubernetes, environment);
@@ -226,7 +226,7 @@ impl Service for Application {
         ) {
             Ok(l) => l,
             Err(e) => {
-                return Err(EngineError::new(
+                return Err(LegacyEngineError::new(
                     Internal,
                     EngineErrorScope::Application(self.id().to_string(), self.name().to_string()),
                     self.context.execution_id(),
@@ -294,7 +294,7 @@ impl Service for Application {
 
 impl Create for Application {
     #[named]
-    fn on_create(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -307,12 +307,12 @@ impl Create for Application {
         })
     }
 
-    fn on_create_check(&self) -> Result<(), EngineError> {
+    fn on_create_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_create_error(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -328,7 +328,7 @@ impl Create for Application {
 
 impl Pause for Application {
     #[named]
-    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -346,12 +346,12 @@ impl Pause for Application {
         })
     }
 
-    fn on_pause_check(&self) -> Result<(), EngineError> {
+    fn on_pause_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -365,7 +365,7 @@ impl Pause for Application {
 
 impl Delete for Application {
     #[named]
-    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -378,12 +378,12 @@ impl Delete for Application {
         })
     }
 
-    fn on_delete_check(&self) -> Result<(), EngineError> {
+    fn on_delete_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_delete_error(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),

@@ -5,7 +5,7 @@ use rusoto_credential::StaticProvider;
 use rusoto_sts::{GetCallerIdentityRequest, Sts, StsClient};
 use uuid::Uuid;
 
-use crate::cloud_provider::{CloudProvider, EngineError, Kind, TerraformStateCredentials};
+use crate::cloud_provider::{CloudProvider, Kind, LegacyEngineError, TerraformStateCredentials};
 use crate::constants::{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY};
 use crate::error::EngineErrorCause;
 use crate::models::{Context, Listen, Listener, Listeners};
@@ -103,7 +103,7 @@ impl CloudProvider for AWS {
         todo!()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         let client = StsClient::new_with_client(self.client(), Region::default());
         let s = block_on(client.get_caller_identity(GetCallerIdentityRequest::default()));
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::cloud_provider::models::CpuLimits;
-use crate::error::{EngineError, StringError};
+use crate::error::{LegacyEngineError, StringError};
 use crate::models::{Listeners, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope};
 use chrono::Duration;
 use core::option::Option::{None, Some};
@@ -415,7 +415,7 @@ pub fn check_domain_for(
     domains_to_check: Vec<&str>,
     execution_id: &str,
     context_id: &str,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let resolver = cloudflare_dns_resolver();
 
     for domain in domains_to_check {

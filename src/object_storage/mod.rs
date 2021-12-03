@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::{EngineError, EngineErrorCause, EngineErrorScope};
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::models::{Context, StringPath};
 use std::fs::File;
 
@@ -16,16 +16,21 @@ pub trait ObjectStorage {
     fn name_with_id(&self) -> String {
         format!("{} ({})", self.name(), self.id())
     }
-    fn is_valid(&self) -> Result<(), EngineError>;
-    fn create_bucket(&self, bucket_name: &str) -> Result<(), EngineError>;
-    fn delete_bucket(&self, bucket_name: &str) -> Result<(), EngineError>;
-    fn get(&self, bucket_name: &str, object_key: &str, use_cache: bool) -> Result<(StringPath, File), EngineError>;
-    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), EngineError>;
+    fn is_valid(&self) -> Result<(), LegacyEngineError>;
+    fn create_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError>;
+    fn delete_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError>;
+    fn get(
+        &self,
+        bucket_name: &str,
+        object_key: &str,
+        use_cache: bool,
+    ) -> Result<(StringPath, File), LegacyEngineError>;
+    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), LegacyEngineError>;
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::ObjectStorage(self.id().to_string(), self.name().to_string())
     }
-    fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
-        EngineError::new(
+    fn engine_error(&self, cause: EngineErrorCause, message: String) -> LegacyEngineError {
+        LegacyEngineError::new(
             cause,
             self.engine_error_scope(),
             self.context().execution_id(),

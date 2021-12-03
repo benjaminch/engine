@@ -9,7 +9,7 @@ use crate::cloud_provider::utilities::{get_self_hosted_postgres_version, print_a
 use crate::cloud_provider::DeploymentTarget;
 use crate::cmd::helm::Timeout;
 use crate::cmd::kubectl;
-use crate::error::{EngineError, EngineErrorScope};
+use crate::error::{EngineErrorScope, LegacyEngineError};
 use crate::models::DatabaseMode::MANAGED;
 use crate::models::{Context, Listen, Listener, Listeners};
 use ::function_name::named;
@@ -60,7 +60,7 @@ impl PostgreSQL {
         }
     }
 
-    fn matching_correct_version(&self) -> Result<String, EngineError> {
+    fn matching_correct_version(&self) -> Result<String, LegacyEngineError> {
         check_service_version(get_self_hosted_postgres_version(self.version()), self)
     }
 
@@ -136,7 +136,7 @@ impl Service for PostgreSQL {
         self.options.publicly_accessible
     }
 
-    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, EngineError> {
+    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, LegacyEngineError> {
         let kubernetes = target.kubernetes;
         let environment = target.environment;
         let mut context = default_tera_context(self, kubernetes, environment);
@@ -240,7 +240,7 @@ impl Terraform for PostgreSQL {
 
 impl Create for PostgreSQL {
     #[named]
-    fn on_create(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -255,12 +255,12 @@ impl Create for PostgreSQL {
         )
     }
 
-    fn on_create_check(&self) -> Result<(), EngineError> {
+    fn on_create_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_create_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_create_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -274,7 +274,7 @@ impl Create for PostgreSQL {
 
 impl Pause for PostgreSQL {
     #[named]
-    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -287,12 +287,12 @@ impl Pause for PostgreSQL {
         })
     }
 
-    fn on_pause_check(&self) -> Result<(), EngineError> {
+    fn on_pause_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_pause_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -306,7 +306,7 @@ impl Pause for PostgreSQL {
 
 impl Delete for PostgreSQL {
     #[named]
-    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -321,12 +321,12 @@ impl Delete for PostgreSQL {
         )
     }
 
-    fn on_delete_check(&self) -> Result<(), EngineError> {
+    fn on_delete_check(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_delete_error(&self, _target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn on_delete_error(&self, _target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),

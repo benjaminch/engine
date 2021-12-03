@@ -5,7 +5,7 @@ use reqwest::StatusCode;
 use crate::build_platform::Image;
 use crate::cmd;
 use crate::container_registry::docker::docker_tag_and_push_image;
-use crate::container_registry::{ContainerRegistry, EngineError, Kind, PushResult};
+use crate::container_registry::{ContainerRegistry, Kind, LegacyEngineError, PushResult};
 use crate::error::EngineErrorCause;
 use crate::models::{
     Context, Listen, Listener, Listeners, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope,
@@ -50,7 +50,7 @@ impl ContainerRegistry for DockerHub {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         // check the version of docker and print it as info
         let mut output_from_cmd = String::new();
         let _ = cmd::utilities::exec_with_output(
@@ -70,19 +70,19 @@ impl ContainerRegistry for DockerHub {
         Ok(())
     }
 
-    fn on_create(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_create_error(&self) -> Result<(), EngineError> {
+    fn on_create_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_delete(&self) -> Result<(), EngineError> {
+    fn on_delete(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_delete_error(&self) -> Result<(), EngineError> {
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
@@ -107,7 +107,7 @@ impl ContainerRegistry for DockerHub {
         }
     }
 
-    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, EngineError> {
+    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, LegacyEngineError> {
         let envs = match self.context.docker_tcp_socket() {
             Some(tcp_socket) => vec![("DOCKER_HOST", tcp_socket.as_str())],
             None => vec![],
@@ -184,7 +184,7 @@ impl ContainerRegistry for DockerHub {
         }
     }
 
-    fn push_error(&self, _image: &Image) -> Result<PushResult, EngineError> {
+    fn push_error(&self, _image: &Image) -> Result<PushResult, LegacyEngineError> {
         unimplemented!()
     }
 }

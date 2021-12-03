@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::build_platform::Image;
 use crate::container_registry::docker::docker_tag_and_push_image;
-use crate::container_registry::{ContainerRegistry, EngineError, Kind, PushResult};
+use crate::container_registry::{ContainerRegistry, Kind, LegacyEngineError, PushResult};
 use crate::error::{cast_simple_error_to_engine_error, EngineErrorCause, SimpleError, SimpleErrorKind};
 use crate::models::{
     Context, Listen, Listener, Listeners, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope,
@@ -40,7 +40,7 @@ impl DOCR {
         }
     }
 
-    fn get_registry_name(&self, image: &Image) -> Result<String, EngineError> {
+    fn get_registry_name(&self, image: &Image) -> Result<String, LegacyEngineError> {
         let registry_name = match image.registry_name.as_ref() {
             // DOCR does not support upper cases
             Some(registry_name) => registry_name.to_lowercase(),
@@ -54,7 +54,7 @@ impl DOCR {
         Ok(registry_name)
     }
 
-    fn create_repository(&self, image: &Image) -> Result<(), EngineError> {
+    fn create_repository(&self, image: &Image) -> Result<(), LegacyEngineError> {
         let registry_name = match image.registry_name.as_ref() {
             // DOCR does not support upper cases
             Some(registry_name) => registry_name.to_lowercase(),
@@ -110,7 +110,7 @@ impl DOCR {
         }
     }
 
-    fn push_image(&self, registry_name: String, dest: String, image: &Image) -> Result<PushResult, EngineError> {
+    fn push_image(&self, registry_name: String, dest: String, image: &Image) -> Result<PushResult, LegacyEngineError> {
         let _ =
             match docker_tag_and_push_image(self.kind(), vec![], image.name.clone(), image.tag.clone(), dest.clone()) {
                 Ok(_) => {}
@@ -154,12 +154,12 @@ impl DOCR {
         todo!()
     }
 
-    pub fn delete_image(&self, _image: &Image) -> Result<(), EngineError> {
+    pub fn delete_image(&self, _image: &Image) -> Result<(), LegacyEngineError> {
         // TODO(benjaminch): To be implemented later on, but note it must not slow down CI workflow
         Ok(())
     }
 
-    pub fn delete_repository(&self) -> Result<(), EngineError> {
+    pub fn delete_repository(&self) -> Result<(), LegacyEngineError> {
         let headers = utilities::get_header_with_bearer(&self.api_key);
         let res = reqwest::blocking::Client::new()
             .delete(CR_API_PATH)
@@ -207,23 +207,23 @@ impl ContainerRegistry for DOCR {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_create(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_create_error(&self) -> Result<(), EngineError> {
+    fn on_create_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_delete(&self) -> Result<(), EngineError> {
+    fn on_delete(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_delete_error(&self) -> Result<(), EngineError> {
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
@@ -305,7 +305,7 @@ impl ContainerRegistry for DOCR {
     }
 
     // https://www.digitalocean.com/docs/images/container-registry/how-to/use-registry-docker-kubernetes/
-    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, EngineError> {
+    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, LegacyEngineError> {
         let registry_name = self.get_registry_name(image)?;
 
         match self.create_repository(image) {
@@ -380,7 +380,7 @@ impl ContainerRegistry for DOCR {
         self.push_image(registry_name, dest, image)
     }
 
-    fn push_error(&self, image: &Image) -> Result<PushResult, EngineError> {
+    fn push_error(&self, image: &Image) -> Result<PushResult, LegacyEngineError> {
         Ok(PushResult { image: image.clone() })
     }
 }

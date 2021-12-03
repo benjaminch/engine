@@ -6,7 +6,7 @@ use crate::cloud_provider::kubernetes::Kubernetes;
 use crate::cloud_provider::service::{Application, Service};
 use crate::container_registry::PushResult;
 use crate::engine::Engine;
-use crate::error::EngineError;
+use crate::error::LegacyEngineError;
 use crate::models::{
     Action, Environment, EnvironmentAction, EnvironmentError, ListenersHelper, ProgressInfo, ProgressLevel,
     ProgressScope,
@@ -27,7 +27,7 @@ impl<'a> Transaction<'a> {
         }
     }
 
-    pub fn create_kubernetes(&mut self, kubernetes: &'a dyn Kubernetes) -> Result<(), EngineError> {
+    pub fn create_kubernetes(&mut self, kubernetes: &'a dyn Kubernetes) -> Result<(), LegacyEngineError> {
         match kubernetes.is_valid() {
             Ok(_) => {
                 self.steps.push(Step::CreateKubernetes(kubernetes));
@@ -37,7 +37,7 @@ impl<'a> Transaction<'a> {
         }
     }
 
-    pub fn pause_kubernetes(&mut self, kubernetes: &'a dyn Kubernetes) -> Result<(), EngineError> {
+    pub fn pause_kubernetes(&mut self, kubernetes: &'a dyn Kubernetes) -> Result<(), LegacyEngineError> {
         match kubernetes.is_valid() {
             Ok(_) => {
                 self.steps.push(Step::PauseKubernetes(kubernetes));
@@ -47,7 +47,7 @@ impl<'a> Transaction<'a> {
         }
     }
 
-    pub fn delete_kubernetes(&mut self, kubernetes: &'a dyn Kubernetes) -> Result<(), EngineError> {
+    pub fn delete_kubernetes(&mut self, kubernetes: &'a dyn Kubernetes) -> Result<(), LegacyEngineError> {
         match kubernetes.is_valid() {
             Ok(_) => {
                 self.steps.push(Step::DeleteKubernetes(kubernetes));
@@ -137,7 +137,7 @@ impl<'a> Transaction<'a> {
         &self,
         environment: &Environment,
         option: &DeploymentOption,
-    ) -> Result<Vec<Box<dyn Application>>, EngineError> {
+    ) -> Result<Vec<Box<dyn Application>>, LegacyEngineError> {
         // do the same for applications
         let apps_to_build = environment
             .applications
@@ -188,7 +188,7 @@ impl<'a> Transaction<'a> {
         &self,
         applications: Vec<Box<dyn Application>>,
         option: &DeploymentOption,
-    ) -> Result<Vec<(Box<dyn Application>, PushResult)>, EngineError> {
+    ) -> Result<Vec<(Box<dyn Application>, PushResult)>, LegacyEngineError> {
         let application_and_push_results: Vec<_> = applications
             .into_iter()
             .map(|mut app| {
@@ -495,7 +495,7 @@ impl<'a> Transaction<'a> {
         &self,
         kubernetes: &dyn Kubernetes,
         action: Action,
-        result: Result<(), EngineError>,
+        result: Result<(), LegacyEngineError>,
     ) -> TransactionResult {
         // send back the right progress status
         fn send_progress(lh: &ListenersHelper, action: Action, execution_id: &str, is_error: bool) {
@@ -567,7 +567,7 @@ impl<'a> Transaction<'a> {
         action_fn: F,
     ) -> TransactionResult
     where
-        F: Fn(&crate::cloud_provider::environment::Environment) -> Result<(), EngineError>,
+        F: Fn(&crate::cloud_provider::environment::Environment) -> Result<(), LegacyEngineError>,
     {
         let target_environment = match environment_action {
             EnvironmentAction::Environment(te) => te,
@@ -705,7 +705,7 @@ impl<'a> Clone for Step<'a> {
 
 #[derive(Debug)]
 pub enum RollbackError {
-    CommitError(EngineError),
+    CommitError(LegacyEngineError),
     NoFailoverEnvironment,
     Nothing,
 }
@@ -713,6 +713,6 @@ pub enum RollbackError {
 #[derive(Debug)]
 pub enum TransactionResult {
     Ok,
-    Rollback(EngineError),
-    UnrecoverableError(EngineError, RollbackError),
+    Rollback(LegacyEngineError),
+    UnrecoverableError(LegacyEngineError, RollbackError),
 }

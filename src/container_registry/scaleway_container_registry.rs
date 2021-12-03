@@ -5,7 +5,7 @@ use crate::cloud_provider::scaleway::application::Zone;
 use crate::build_platform::Image;
 use crate::container_registry::docker::{docker_login, docker_manifest_inspect, docker_tag_and_push_image};
 use crate::container_registry::{ContainerRegistry, Kind, PushResult};
-use crate::error::{EngineError, EngineErrorCause};
+use crate::error::{EngineErrorCause, LegacyEngineError};
 use crate::models::{
     Context, Listen, Listener, Listeners, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope,
 };
@@ -135,7 +135,10 @@ impl ScalewayCR {
         None
     }
 
-    pub fn delete_image(&self, image: &Image) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Image, EngineError> {
+    pub fn delete_image(
+        &self,
+        image: &Image,
+    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Image, LegacyEngineError> {
         // https://developers.scaleway.com/en/products/registry/api/#delete-67dbf7
         let image_to_delete = self.get_image(image);
         if image_to_delete.is_none() {
@@ -165,7 +168,7 @@ impl ScalewayCR {
         }
     }
 
-    fn push_image(&self, image_url: String, image: &Image) -> Result<PushResult, EngineError> {
+    fn push_image(&self, image_url: String, image: &Image) -> Result<PushResult, LegacyEngineError> {
         // https://www.scaleway.com/en/docs/deploy-an-image-from-registry-to-kubernetes-kapsule/
         match docker_tag_and_push_image(
             self.kind(),
@@ -209,7 +212,7 @@ impl ScalewayCR {
     pub fn create_registry_namespace(
         &self,
         image: &Image,
-    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Namespace, EngineError> {
+    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Namespace, LegacyEngineError> {
         // https://developers.scaleway.com/en/products/registry/api/#post-7a8fcc
         match block_on(scaleway_api_rs::apis::namespaces_api::create_namespace(
             &self.get_configuration(),
@@ -238,7 +241,7 @@ impl ScalewayCR {
     pub fn delete_registry_namespace(
         &self,
         image: &Image,
-    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Namespace, EngineError> {
+    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Namespace, LegacyEngineError> {
         // https://developers.scaleway.com/en/products/registry/api/#delete-c1ac9b
         let registry_to_delete = self.get_registry_namespace(image);
         if registry_to_delete.is_none() {
@@ -274,7 +277,7 @@ impl ScalewayCR {
     pub fn get_or_create_registry_namespace(
         &self,
         image: &Image,
-    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Namespace, EngineError> {
+    ) -> Result<scaleway_api_rs::models::ScalewayRegistryV1Namespace, LegacyEngineError> {
         // check if the repository already exists
         let registry_namespace = self.get_registry_namespace(&image);
         if let Some(namespace) = registry_namespace {
@@ -314,23 +317,23 @@ impl ContainerRegistry for ScalewayCR {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_create(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_create_error(&self) -> Result<(), EngineError> {
+    fn on_create_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_delete(&self) -> Result<(), EngineError> {
+    fn on_delete(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn on_delete_error(&self) -> Result<(), EngineError> {
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
@@ -361,7 +364,7 @@ impl ContainerRegistry for ScalewayCR {
         .is_some()
     }
 
-    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, EngineError> {
+    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, LegacyEngineError> {
         let mut image = image.clone();
         let registry_url: String;
         let registry_name: String;
@@ -452,7 +455,7 @@ impl ContainerRegistry for ScalewayCR {
         self.push_image(image_url, &image)
     }
 
-    fn push_error(&self, image: &Image) -> Result<PushResult, EngineError> {
+    fn push_error(&self, image: &Image) -> Result<PushResult, LegacyEngineError> {
         Ok(PushResult { image: image.clone() })
     }
 }

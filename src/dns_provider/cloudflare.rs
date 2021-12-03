@@ -1,7 +1,7 @@
 use std::net::Ipv4Addr;
 
 use crate::dns_provider::{DnsProvider, Kind};
-use crate::error::{EngineError, EngineErrorCause};
+use crate::error::{EngineErrorCause, LegacyEngineError};
 use crate::models::{Context, Domain};
 
 pub struct Cloudflare {
@@ -70,7 +70,7 @@ impl DnsProvider for Cloudflare {
         vec![Ipv4Addr::new(1, 1, 1, 1), Ipv4Addr::new(1, 0, 0, 1)]
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         if self.cloudflare_api_token.is_empty() || self.cloudflare_email.is_empty() {
             Err(self.engine_error(
                 EngineErrorCause::User(

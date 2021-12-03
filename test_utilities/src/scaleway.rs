@@ -6,7 +6,7 @@ use qovery_engine::cloud_provider::scaleway::Scaleway;
 use qovery_engine::cloud_provider::TerraformStateCredentials;
 use qovery_engine::container_registry::scaleway_container_registry::ScalewayCR;
 use qovery_engine::engine::Engine;
-use qovery_engine::error::EngineError;
+use qovery_engine::error::LegacyEngineError;
 use qovery_engine::models::{Context, Environment};
 use qovery_engine::object_storage::scaleway_object_storage::{BucketDeleteStrategy, ScalewayOS};
 
@@ -189,7 +189,7 @@ pub fn clean_environments(
     environments: Vec<Environment>,
     secrets: FuncTestsSecrets,
     zone: Zone,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let secret_token = secrets.SCALEWAY_SECRET_KEY.unwrap();
     let project_id = secrets.SCALEWAY_DEFAULT_PROJECT_ID.unwrap();
 

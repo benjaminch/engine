@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::{EngineError, EngineErrorCause, EngineErrorScope};
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::git::Credentials;
 use crate::models::{Context, Listen};
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -15,14 +15,14 @@ pub trait BuildPlatform: Listen {
     fn name_with_id(&self) -> String {
         format!("{} ({})", self.name(), self.id())
     }
-    fn is_valid(&self) -> Result<(), EngineError>;
-    fn build(&self, build: Build, force_build: bool) -> Result<BuildResult, EngineError>;
-    fn build_error(&self, build: Build) -> Result<BuildResult, EngineError>;
+    fn is_valid(&self) -> Result<(), LegacyEngineError>;
+    fn build(&self, build: Build, force_build: bool) -> Result<BuildResult, LegacyEngineError>;
+    fn build_error(&self, build: Build) -> Result<BuildResult, LegacyEngineError>;
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::BuildPlatform(self.id().to_string(), self.name().to_string())
     }
-    fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
-        EngineError::new(
+    fn engine_error(&self, cause: EngineErrorCause, message: String) -> LegacyEngineError {
+        LegacyEngineError::new(
             cause,
             self.engine_error_scope(),
             self.context().execution_id(),

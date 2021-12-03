@@ -12,7 +12,7 @@ use rusoto_s3::{
 use tokio::io;
 
 use crate::cloud_provider::digitalocean::application::Region as DoRegion;
-use crate::error::{EngineError, EngineErrorCause};
+use crate::error::{EngineErrorCause, LegacyEngineError};
 use crate::models::{Context, StringPath};
 use crate::object_storage::{Kind, ObjectStorage};
 use crate::runtime;
@@ -88,7 +88,7 @@ impl Spaces {
         Ok(())
     }
 
-    fn empty_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn empty_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         if let Err(message) = Spaces::is_bucket_name_valid(bucket_name) {
             let message = format!(
                 "While trying to delete object-storage bucket, name `{}` is invalid: {}",
@@ -156,7 +156,7 @@ impl Spaces {
         bucket_name: T,
         object_key: S,
         download_into_file_path: X,
-    ) -> Result<File, EngineError>
+    ) -> Result<File, LegacyEngineError>
     where
         T: Into<String>,
         S: Into<String>,
@@ -222,12 +222,12 @@ impl ObjectStorage for Spaces {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         // TODO check valid credentials
         Ok(())
     }
 
-    fn create_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn create_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         if let Err(message) = Spaces::is_bucket_name_valid(bucket_name) {
             let message = format!(
                 "error while trying to create object-storage bucket `{}` is invalid: {}",
@@ -261,7 +261,7 @@ impl ObjectStorage for Spaces {
         Ok(())
     }
 
-    fn delete_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn delete_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         let s3_client = self.get_s3_client();
 
         // make sure to delete all bucket content before trying to delete the bucket
@@ -291,7 +291,12 @@ impl ObjectStorage for Spaces {
         };
     }
 
-    fn get(&self, bucket_name: &str, object_key: &str, use_cache: bool) -> Result<(StringPath, File), EngineError> {
+    fn get(
+        &self,
+        bucket_name: &str,
+        object_key: &str,
+        use_cache: bool,
+    ) -> Result<(StringPath, File), LegacyEngineError> {
         let workspace_directory = crate::fs::workspace_directory(
             self.context().workspace_root_dir(),
             self.context().execution_id(),
@@ -342,7 +347,7 @@ impl ObjectStorage for Spaces {
         }
     }
 
-    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), EngineError> {
+    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), LegacyEngineError> {
         // TODO(benjamin): switch to `digitalocean-api-rs` once we'll made the auo-generated lib
         if let Err(message) = Spaces::is_bucket_name_valid(bucket_name) {
             let message = format!(

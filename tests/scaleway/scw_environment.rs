@@ -2,7 +2,7 @@ extern crate test_utilities;
 
 use self::test_utilities::scaleway::{clean_environments, SCW_TEST_ZONE};
 use self::test_utilities::utilities::{
-    context, engine_run_test, generate_id, get_pods, get_pvc, init, is_pod_restarted_env, FuncTestsSecrets,
+    context, engine_run_test, generate_id, get_pods, get_pvc, init, is_pod_restarted_env, log_manager, FuncTestsSecrets,
 };
 use ::function_name::named;
 use qovery_engine::cloud_provider::Kind;
@@ -26,6 +26,7 @@ fn scaleway_kapsule_deploy_a_working_environment_with_no_router() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_delete = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -51,13 +52,18 @@ fn scaleway_kapsule_deploy_a_working_environment_with_no_router() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_for_delete = EnvironmentAction::Environment(environment_for_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match environment_for_delete.delete_environment(Kind::Scw, &context_for_delete, &env_action_for_delete) {
+        match environment_for_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_delete,
+            &env_action_for_delete,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -82,6 +88,7 @@ fn scaleway_kapsule_deploy_a_not_working_environment_with_no_router() {
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_delete = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -107,13 +114,18 @@ fn scaleway_kapsule_deploy_a_not_working_environment_with_no_router() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_for_delete = EnvironmentAction::Environment(environment_for_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
 
-        match environment_for_delete.delete_environment(Kind::Scw, &context_for_delete, &env_action_for_delete) {
+        match environment_for_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_delete,
+            &env_action_for_delete,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
@@ -138,6 +150,7 @@ fn scaleway_kapsule_deploy_a_working_environment_and_pause() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_delete = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -158,7 +171,7 @@ fn scaleway_kapsule_deploy_a_working_environment_and_pause() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let selector = format!("appId={}", environment.applications[0].id);
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -178,7 +191,7 @@ fn scaleway_kapsule_deploy_a_working_environment_and_pause() {
         assert_eq!(ret.is_ok(), true);
         assert_eq!(ret.unwrap().items.is_empty(), false);
 
-        match environment.pause_environment(Kind::Scw, &context_for_delete, &env_action) {
+        match environment.pause_environment(&log_manager, Kind::Scw, &context_for_delete, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -201,7 +214,7 @@ fn scaleway_kapsule_deploy_a_working_environment_and_pause() {
 
         // Check we can resume the env
         let ctx_resume = context.clone_not_same_execution_id();
-        match environment.deploy_environment(Kind::Scw, &ctx_resume, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &ctx_resume, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -222,7 +235,7 @@ fn scaleway_kapsule_deploy_a_working_environment_and_pause() {
         assert_eq!(ret.unwrap().items.is_empty(), false);
 
         // Cleanup
-        match environment.delete_environment(Kind::Scw, &context_for_delete, &env_action) {
+        match environment.delete_environment(&log_manager, Kind::Scw, &context_for_delete, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -247,6 +260,7 @@ fn scaleway_kapsule_build_with_buildpacks_and_deploy_a_working_environment() {
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_delete = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -281,13 +295,18 @@ fn scaleway_kapsule_build_with_buildpacks_and_deploy_a_working_environment() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_for_delete = EnvironmentAction::Environment(environment_for_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match environment_for_delete.delete_environment(Kind::Scw, &context_for_delete, &env_action_for_delete) {
+        match environment_for_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_delete,
+            &env_action_for_delete,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -312,6 +331,7 @@ fn scaleway_kapsule_deploy_a_working_environment_with_domain() {
         let span = span!(Level::INFO, "test",);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_delete = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -335,13 +355,18 @@ fn scaleway_kapsule_deploy_a_working_environment_with_domain() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_for_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_delete, &env_action_for_delete) {
+        match environment_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_delete,
+            &env_action_for_delete,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -366,6 +391,7 @@ fn scaleway_kapsule_deploy_a_working_environment_with_storage() {
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_deletion = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -407,7 +433,7 @@ fn scaleway_kapsule_deploy_a_working_environment_with_storage() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -430,7 +456,8 @@ fn scaleway_kapsule_deploy_a_working_environment_with_storage() {
             Err(_) => assert!(false),
         };
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_deletion, &env_action_delete) {
+        match environment_delete.delete_environment(&log_manager, Kind::Scw, &context_for_deletion, &env_action_delete)
+        {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -455,6 +482,7 @@ fn scaleway_kapsule_redeploy_same_app() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_bis = context.clone_not_same_execution_id();
         let context_for_deletion = context.clone_not_same_execution_id();
@@ -502,7 +530,7 @@ fn scaleway_kapsule_redeploy_same_app() {
         let env_action_redeploy = EnvironmentAction::Environment(environment_redeploy.clone());
         let env_action_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -538,7 +566,7 @@ fn scaleway_kapsule_redeploy_same_app() {
             secrets.clone(),
         );
 
-        match environment_redeploy.deploy_environment(Kind::Scw, &context_bis, &env_action_redeploy) {
+        match environment_redeploy.deploy_environment(&log_manager, Kind::Scw, &context_bis, &env_action_redeploy) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -559,7 +587,8 @@ fn scaleway_kapsule_redeploy_same_app() {
         // nothing changed in the app, so, it shouldn't be restarted
         assert!(number.eq(&number2));
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_deletion, &env_action_delete) {
+        match environment_delete.delete_environment(&log_manager, Kind::Scw, &context_for_deletion, &env_action_delete)
+        {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -584,6 +613,7 @@ fn scaleway_kapsule_deploy_a_not_working_environment_and_then_working_environmen
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_not_working = context.clone_not_same_execution_id();
         let context_for_delete = context.clone_not_same_execution_id();
@@ -626,6 +656,7 @@ fn scaleway_kapsule_deploy_a_not_working_environment_and_then_working_environmen
         let env_action_delete = EnvironmentAction::Environment(environment_for_delete.clone());
 
         match environment_for_not_working.deploy_environment(
+            &log_manager,
             Kind::Scw,
             &context_for_not_working,
             &env_action_not_working,
@@ -634,12 +665,17 @@ fn scaleway_kapsule_deploy_a_not_working_environment_and_then_working_environmen
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
-        match environment_for_delete.delete_environment(Kind::Scw, &context_for_delete, &env_action_delete) {
+        match environment_for_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_delete,
+            &env_action_delete,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -664,6 +700,8 @@ fn scaleway_kapsule_deploy_ok_fail_fail_ok_environment() {
 
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
+
+        let log_manager = log_manager();
 
         // working env
         let context = context();
@@ -712,34 +750,44 @@ fn scaleway_kapsule_deploy_ok_fail_fail_ok_environment() {
         let env_action_delete = EnvironmentAction::Environment(delete_env.clone());
 
         // OK
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
         // FAIL and rollback
-        match not_working_env_1.deploy_environment(Kind::Scw, &context_for_not_working_1, &env_action_not_working_1) {
+        match not_working_env_1.deploy_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_not_working_1,
+            &env_action_not_working_1,
+        ) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(true),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
 
         // FAIL and Rollback again
-        match not_working_env_2.deploy_environment(Kind::Scw, &context_for_not_working_2, &env_action_not_working_2) {
+        match not_working_env_2.deploy_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_not_working_2,
+            &env_action_not_working_2,
+        ) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(true),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
 
         // Should be working
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match delete_env.delete_environment(Kind::Scw, &context_for_delete, &env_action_delete) {
+        match delete_env.delete_environment(&log_manager, Kind::Scw, &context_for_delete, &env_action_delete) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -764,6 +812,7 @@ fn scaleway_kapsule_deploy_a_non_working_environment_with_no_failover() {
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let secrets = FuncTestsSecrets::new();
         let environment = test_utilities::common::non_working_environment(
@@ -787,13 +836,13 @@ fn scaleway_kapsule_deploy_a_non_working_environment_with_no_failover() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_delete = EnvironmentAction::Environment(delete_env.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
 
-        match delete_env.delete_environment(Kind::Scw, &context_for_delete, &env_action_delete) {
+        match delete_env.delete_environment(&log_manager, Kind::Scw, &context_for_delete, &env_action_delete) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -817,6 +866,8 @@ fn scaleway_kapsule_deploy_a_non_working_environment_with_a_working_failover() {
 
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
+
+        let log_manager = log_manager();
 
         // context for non working environment
         let context = context();
@@ -861,13 +912,13 @@ fn scaleway_kapsule_deploy_a_non_working_environment_with_a_working_failover() {
         let env_action_delete = EnvironmentAction::Environment(delete_env.clone());
         let env_action = EnvironmentAction::EnvironmentWithFailover(environment.clone(), failover_environment.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
 
-        match delete_env.delete_environment(Kind::Scw, &context_deletion, &env_action_delete) {
+        match delete_env.delete_environment(&log_manager, Kind::Scw, &context_deletion, &env_action_delete) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -897,6 +948,7 @@ fn scaleway_kapsule_deploy_a_non_working_environment_with_a_non_working_failover
         let span = span!(Level::INFO, "test", name = test_name,);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let secrets = FuncTestsSecrets::new();
         let test_domain = secrets
@@ -939,13 +991,13 @@ fn scaleway_kapsule_deploy_a_non_working_environment_with_a_non_working_failover
         let env_action_delete = EnvironmentAction::Environment(delete_env.clone());
         let env_action = EnvironmentAction::EnvironmentWithFailover(environment.clone(), failover_environment.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
         };
 
-        match delete_env.delete_environment(Kind::Scw, &context_for_deletion, &env_action_delete) {
+        match delete_env.delete_environment(&log_manager, Kind::Scw, &context_for_deletion, &env_action_delete) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),

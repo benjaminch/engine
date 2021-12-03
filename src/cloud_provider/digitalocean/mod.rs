@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::cloud_provider::{CloudProvider, Kind, TerraformStateCredentials};
 use crate::constants::DIGITAL_OCEAN_TOKEN;
-use crate::error::{EngineError, EngineErrorCause};
+use crate::error::{EngineErrorCause, LegacyEngineError};
 use crate::models::{Context, Listen, Listener, Listeners};
 
 pub mod application;
@@ -99,7 +99,7 @@ impl CloudProvider for DO {
         self.token.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         let client = DigitalOcean::new(&self.token);
         match client {
             Ok(_x) => Ok(()),

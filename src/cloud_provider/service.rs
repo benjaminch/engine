@@ -16,7 +16,7 @@ use crate::cmd::kubectl::ScalingKind::Statefulset;
 use crate::cmd::kubectl::{kubectl_exec_delete_secret, kubectl_exec_scale_replicas_by_selector, ScalingKind};
 use crate::cmd::structs::LabelsContent;
 use crate::error::{cast_simple_error_to_engine_error, StringError};
-use crate::error::{EngineError, EngineErrorCause, EngineErrorScope};
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::models::ProgressLevel::Info;
 use crate::models::{
     Context, DatabaseMode, Listen, Listeners, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope,
@@ -67,7 +67,7 @@ pub trait Service {
             },
         }
     }
-    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, EngineError>;
+    fn tera_context(&self, target: &DeploymentTarget) -> Result<TeraContext, LegacyEngineError>;
     // used to retrieve logs by using Kubernetes labels (selector)
     fn selector(&self) -> String;
     fn debug_logs(&self, deployment_target: &DeploymentTarget) -> Vec<String> {
@@ -82,22 +82,22 @@ pub trait Service {
         TcpStream::connect(format!("{}:{}", ip, private_port)).is_ok()
     }
     fn engine_error_scope(&self) -> EngineErrorScope;
-    fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
-        EngineError::new(
+    fn engine_error(&self, cause: EngineErrorCause, message: String) -> LegacyEngineError {
+        LegacyEngineError::new(
             cause,
             self.engine_error_scope(),
             self.context().execution_id(),
             Some(message),
         )
     }
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         let binaries = ["kubectl", "helm", "terraform", "aws-iam-authenticator"];
 
         for binary in binaries.iter() {
             if !crate::cmd::utilities::does_binary_exist(binary) {
                 let err = format!("{} binary not found", binary);
 
-                return Err(EngineError::new(
+                return Err(LegacyEngineError::new(
                     EngineErrorCause::Internal,
                     EngineErrorScope::Engine,
                     self.id(),
@@ -123,7 +123,7 @@ pub trait Service {
 }
 
 pub trait StatelessService: Service + Create + Pause + Delete {
-    fn exec_action(&self, deployment_target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn exec_action(&self, deployment_target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         match self.action() {
             crate::cloud_provider::service::Action::Create => self.on_create(deployment_target),
             crate::cloud_provider::service::Action::Delete => self.on_delete(deployment_target),
@@ -134,7 +134,7 @@ pub trait StatelessService: Service + Create + Pause + Delete {
 }
 
 pub trait StatefulService: Service + Create + Pause + Delete {
-    fn exec_action(&self, deployment_target: &DeploymentTarget) -> Result<(), EngineError> {
+    fn exec_action(&self, deployment_target: &DeploymentTarget) -> Result<(), LegacyEngineError> {
         match self.action() {
             crate::cloud_provider::service::Action::Create => self.on_create(deployment_target),
             crate::cloud_provider::service::Action::Delete => self.on_delete(deployment_target),
@@ -154,7 +154,7 @@ pub trait Application: StatelessService {
 pub trait Router: StatelessService + Listen + Helm {
     fn domains(&self) -> Vec<&str>;
     fn has_custom_domains(&self) -> bool;
-    fn check_domains(&self) -> Result<(), EngineError> {
+    fn check_domains(&self) -> Result<(), LegacyEngineError> {
         check_domain_for(
             ListenersHelper::new(self.listeners()),
             self.domains(),
@@ -166,7 +166,7 @@ pub trait Router: StatelessService + Listen + Helm {
 }
 
 pub trait Database: StatefulService {
-    fn check_domains(&self, listeners: Listeners, domains: Vec<&str>) -> Result<(), EngineError> {
+    fn check_domains(&self, listeners: Listeners, domains: Vec<&str>) -> Result<(), LegacyEngineError> {
         if self.publicly_accessible() {
             check_domain_for(
                 ListenersHelper::new(&listeners),
@@ -180,21 +180,21 @@ pub trait Database: StatefulService {
 }
 
 pub trait Create {
-    fn on_create(&self, target: &DeploymentTarget) -> Result<(), EngineError>;
-    fn on_create_check(&self) -> Result<(), EngineError>;
-    fn on_create_error(&self, target: &DeploymentTarget) -> Result<(), EngineError>;
+    fn on_create(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError>;
+    fn on_create_check(&self) -> Result<(), LegacyEngineError>;
+    fn on_create_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError>;
 }
 
 pub trait Pause {
-    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), EngineError>;
-    fn on_pause_check(&self) -> Result<(), EngineError>;
-    fn on_pause_error(&self, target: &DeploymentTarget) -> Result<(), EngineError>;
+    fn on_pause(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError>;
+    fn on_pause_check(&self) -> Result<(), LegacyEngineError>;
+    fn on_pause_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError>;
 }
 
 pub trait Delete {
-    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), EngineError>;
-    fn on_delete_check(&self) -> Result<(), EngineError>;
-    fn on_delete_error(&self, target: &DeploymentTarget) -> Result<(), EngineError>;
+    fn on_delete(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError>;
+    fn on_delete_check(&self) -> Result<(), LegacyEngineError>;
+    fn on_delete_error(&self, target: &DeploymentTarget) -> Result<(), LegacyEngineError>;
 }
 
 pub trait Terraform {
@@ -315,7 +315,7 @@ pub fn default_tera_context(
 
 /// deploy a stateless service created by the user (E.g: App or External Service)
 /// the difference with `deploy_service(..)` is that this function provides the thrown error in case of failure
-pub fn deploy_user_stateless_service<T>(target: &DeploymentTarget, service: &T) -> Result<(), EngineError>
+pub fn deploy_user_stateless_service<T>(target: &DeploymentTarget, service: &T) -> Result<(), LegacyEngineError>
 where
     T: Service + Helm,
 {
@@ -341,8 +341,8 @@ where
 pub fn deploy_stateless_service<T>(
     target: &DeploymentTarget,
     service: &T,
-    thrown_error: EngineError,
-) -> Result<(), EngineError>
+    thrown_error: LegacyEngineError,
+) -> Result<(), LegacyEngineError>
 where
     T: Service + Helm,
 {
@@ -421,7 +421,7 @@ where
 }
 
 /// do specific operations on a stateless service deployment error
-pub fn deploy_stateless_service_error<T>(target: &DeploymentTarget, service: &T) -> Result<(), EngineError>
+pub fn deploy_stateless_service_error<T>(target: &DeploymentTarget, service: &T) -> Result<(), LegacyEngineError>
 where
     T: Service + Helm,
 {
@@ -461,7 +461,7 @@ pub fn scale_down_database(
     target: &DeploymentTarget,
     service: &impl Database,
     replicas_count: usize,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     if service.is_managed_service() {
         info!("Doing nothing for pause database as it is a managed service");
         return Ok(());
@@ -490,7 +490,7 @@ pub fn scale_down_application(
     service: &impl StatelessService,
     replicas_count: usize,
     scaling_kind: ScalingKind,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let kubernetes = target.kubernetes;
     let environment = target.environment;
     let scaledown_ret = kubectl_exec_scale_replicas_by_selector(
@@ -509,7 +509,7 @@ pub fn scale_down_application(
     )
 }
 
-pub fn delete_router<T>(target: &DeploymentTarget, service: &T, is_error: bool) -> Result<(), EngineError>
+pub fn delete_router<T>(target: &DeploymentTarget, service: &T, is_error: bool) -> Result<(), LegacyEngineError>
 where
     T: Router,
 {
@@ -518,7 +518,11 @@ where
     })
 }
 
-pub fn delete_stateless_service<T>(target: &DeploymentTarget, service: &T, is_error: bool) -> Result<(), EngineError>
+pub fn delete_stateless_service<T>(
+    target: &DeploymentTarget,
+    service: &T,
+    is_error: bool,
+) -> Result<(), LegacyEngineError>
 where
     T: Service + Helm,
 {
@@ -536,7 +540,7 @@ where
     Ok(())
 }
 
-pub fn deploy_stateful_service<T>(target: &DeploymentTarget, service: &T) -> Result<(), EngineError>
+pub fn deploy_stateful_service<T>(target: &DeploymentTarget, service: &T) -> Result<(), LegacyEngineError>
 where
     T: StatefulService + Helm + Terraform,
 {
@@ -698,7 +702,7 @@ where
     Ok(())
 }
 
-pub fn delete_stateful_service<T>(target: &DeploymentTarget, service: &T) -> Result<(), EngineError>
+pub fn delete_stateful_service<T>(target: &DeploymentTarget, service: &T) -> Result<(), LegacyEngineError>
 where
     T: StatefulService + Helm + Terraform,
 {
@@ -771,7 +775,7 @@ where
     Ok(())
 }
 
-pub fn check_service_version<T>(result: Result<String, StringError>, service: &T) -> Result<String, EngineError>
+pub fn check_service_version<T>(result: Result<String, StringError>, service: &T) -> Result<String, LegacyEngineError>
 where
     T: Service + Listen,
 {
@@ -836,7 +840,7 @@ fn delete_terraform_tfstate_secret(
     kubernetes: &dyn Kubernetes,
     namespace: &str,
     secret_name: &str,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let config_file_path = kubernetes.config_file_path()?;
 
     //create the namespace to insert the tfstate in secrets
@@ -857,14 +861,14 @@ pub enum CheckAction {
 }
 
 pub fn check_kubernetes_service_error<T>(
-    result: Result<(), EngineError>,
+    result: Result<(), LegacyEngineError>,
     kubernetes: &dyn Kubernetes,
     service: &Box<T>,
     deployment_target: &DeploymentTarget,
     listeners_helper: &ListenersHelper,
     action_verb: &str,
     action: CheckAction,
-) -> Result<(), EngineError>
+) -> Result<(), LegacyEngineError>
 where
     T: Service + ?Sized,
 {
@@ -973,7 +977,7 @@ pub fn get_stateless_resource_information_for_user<T>(
     kubernetes: &dyn Kubernetes,
     environment: &Environment,
     service: &T,
-) -> Result<Vec<String>, EngineError>
+) -> Result<Vec<String>, LegacyEngineError>
 where
     T: Service + ?Sized,
 {
@@ -1073,7 +1077,7 @@ pub fn get_stateless_resource_information(
     kubernetes: &dyn Kubernetes,
     environment: &Environment,
     selector: &str,
-) -> Result<(Describe, Logs), EngineError> {
+) -> Result<(Describe, Logs), LegacyEngineError> {
     let kubernetes_config_file_path = kubernetes.config_file_path()?;
 
     // exec describe pod...
@@ -1125,7 +1129,7 @@ pub fn helm_uninstall_release(
     kubernetes: &dyn Kubernetes,
     environment: &Environment,
     helm_release_name: &str,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let kubernetes_config_file_path = kubernetes.config_file_path()?;
 
     let history_rows = cast_simple_error_to_engine_error(

@@ -2,7 +2,7 @@ extern crate test_utilities;
 
 use self::test_utilities::common::ClusterDomain;
 use self::test_utilities::digitalocean::{DO_KUBERNETES_MAJOR_VERSION, DO_KUBERNETES_MINOR_VERSION};
-use self::test_utilities::utilities::{context, engine_run_test, FuncTestsSecrets};
+use self::test_utilities::utilities::{context, engine_run_test, log_manager, FuncTestsSecrets};
 use ::function_name::named;
 use qovery_engine::cloud_provider::digitalocean::application::Region;
 use qovery_engine::cloud_provider::Kind;
@@ -20,6 +20,7 @@ fn create_and_destroy_doks_cluster(
     engine_run_test(|| {
         cluster_test(
             test_name,
+            &log_manager(),
             Kind::Do,
             context(),
             region.as_str(),

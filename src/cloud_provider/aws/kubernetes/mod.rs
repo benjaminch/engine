@@ -35,7 +35,8 @@ use crate::dns_provider;
 use crate::dns_provider::DnsProvider;
 use crate::error::EngineErrorCause::Internal;
 use crate::error::{
-    cast_simple_error_to_engine_error, EngineError, EngineErrorCause, EngineErrorScope, SimpleError, SimpleErrorKind,
+    cast_simple_error_to_engine_error, EngineErrorCause, EngineErrorScope, LegacyEngineError, SimpleError,
+    SimpleErrorKind,
 };
 use crate::models::{Action, Context, Features, Listen, Listener, Listeners, ListenersHelper, ToHelmString};
 use crate::object_storage::s3::S3;
@@ -134,12 +135,12 @@ impl<'a> EKS<'a> {
         dns_provider: &'a dyn DnsProvider,
         options: Options,
         nodes_groups: Vec<NodeGroups>,
-    ) -> Result<Self, EngineError> {
+    ) -> Result<Self, LegacyEngineError> {
         let template_directory = format!("{}/aws/bootstrap", context.lib_root_dir());
 
         for node_group in &nodes_groups {
             if AwsInstancesType::from_str(node_group.instance_type.as_str()).is_err() {
-                return Err(EngineError::new(
+                return Err(LegacyEngineError::new(
                     EngineErrorCause::Internal,
                     EngineErrorScope::Engine,
                     context.execution_id(),
@@ -206,11 +207,11 @@ impl<'a> EKS<'a> {
     }
 
     // divide by 2 the total number of subnet to get the exact same number as private and public
-    fn check_odd_subnets(&self, zone_name: &str, subnet_block: &Vec<String>) -> Result<usize, EngineError> {
+    fn check_odd_subnets(&self, zone_name: &str, subnet_block: &Vec<String>) -> Result<usize, LegacyEngineError> {
         let is_odd = subnet_block.len() % 2;
 
         if is_odd == 1 {
-            Err(EngineError {
+            Err(LegacyEngineError {
                 cause: EngineErrorCause::Internal,
                 scope: EngineErrorScope::Engine,
                 execution_id: self.context.execution_id().to_string(),
@@ -224,7 +225,7 @@ impl<'a> EKS<'a> {
         }
     }
 
-    fn tera_context(&self) -> Result<TeraContext, EngineError> {
+    fn tera_context(&self) -> Result<TeraContext, LegacyEngineError> {
         let mut context = TeraContext::new();
 
         let format_ips =
@@ -480,7 +481,7 @@ impl<'a> EKS<'a> {
         Ok(context)
     }
 
-    fn create(&self) -> Result<(), EngineError> {
+    fn create(&self) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
 
         self.send_to_customer(
@@ -568,7 +569,7 @@ impl<'a> EKS<'a> {
                             match terraform_exec(temp_dir.as_str(), vec!["state", "rm", &entry]) {
                                 Ok(_) => info!("successfully removed {}", &entry),
                                 Err(e) => {
-                                    return Err(EngineError {
+                                    return Err(LegacyEngineError {
                                         cause: EngineErrorCause::Internal,
                                         scope: EngineErrorScope::Engine,
                                         execution_id: self.context.execution_id().to_string(),
@@ -673,7 +674,7 @@ impl<'a> EKS<'a> {
         )
     }
 
-    fn create_error(&self) -> Result<(), EngineError> {
+    fn create_error(&self) -> Result<(), LegacyEngineError> {
         let kubeconfig_file = match self.config_file() {
             Ok(x) => x.0,
             Err(e) => {
@@ -694,19 +695,19 @@ impl<'a> EKS<'a> {
         ))
     }
 
-    fn upgrade_error(&self) -> Result<(), EngineError> {
+    fn upgrade_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn downgrade(&self) -> Result<(), EngineError> {
+    fn downgrade(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn downgrade_error(&self) -> Result<(), EngineError> {
+    fn downgrade_error(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
-    fn pause(&self) -> Result<(), EngineError> {
+    fn pause(&self) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
         self.send_to_customer(
             format!("Preparing EKS {} cluster pause with id {}", self.name(), self.id()).as_str(),
@@ -757,7 +758,7 @@ impl<'a> EKS<'a> {
                 tf_workers_resources_name
             }
             Err(e) => {
-                return Err(EngineError {
+                return Err(LegacyEngineError {
                     cause: EngineErrorCause::Internal,
                     scope: EngineErrorScope::Kubernetes(self.id.clone(), self.name.clone()),
                     execution_id: self.context.execution_id().to_string(),
@@ -766,7 +767,7 @@ impl<'a> EKS<'a> {
             }
         };
         if tf_workers_resources.is_empty() {
-            return Err(EngineError {
+            return Err(LegacyEngineError {
                     cause: EngineErrorCause::Internal,
                     scope: EngineErrorScope::Kubernetes(self.id.clone(), self.name.clone()),
                     execution_id: self.context.execution_id().to_string(),
@@ -830,7 +831,7 @@ impl<'a> EKS<'a> {
                             info!("no current running jobs on the Engine, infrastructure pause is allowed to start")
                         }
                         Err(Operation { error, .. }) => {
-                            return Err(EngineError {
+                            return Err(LegacyEngineError {
                                 cause: EngineErrorCause::Internal,
                                 scope: EngineErrorScope::Engine,
                                 execution_id: self.context.execution_id().to_string(),
@@ -838,7 +839,7 @@ impl<'a> EKS<'a> {
                             })
                         }
                         Err(retry::Error::Internal(msg)) => {
-                            return Err(EngineError::new(
+                            return Err(LegacyEngineError::new(
                                 EngineErrorCause::Internal,
                                 EngineErrorScope::Engine,
                                 self.context.execution_id(),
@@ -879,14 +880,14 @@ impl<'a> EKS<'a> {
         }
     }
 
-    fn pause_error(&self) -> Result<(), EngineError> {
+    fn pause_error(&self) -> Result<(), LegacyEngineError> {
         Err(self.engine_error(
             EngineErrorCause::Internal,
             format!("{} Kubernetes cluster failed to pause", self.name()),
         ))
     }
 
-    fn delete(&self) -> Result<(), EngineError> {
+    fn delete(&self) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
         let mut skip_kubernetes_step = false;
         self.send_to_customer(
@@ -1031,7 +1032,7 @@ impl<'a> EKS<'a> {
             ) {
                 Ok(_) => {}
                 Err(e) => {
-                    return Err(EngineError::new(
+                    return Err(LegacyEngineError::new(
                         Internal,
                         self.engine_error_scope(),
                         self.context().execution_id(),
@@ -1143,7 +1144,7 @@ impl<'a> EKS<'a> {
                 Ok(())
             }
             Err(Operation { error, .. }) => Err(error),
-            Err(retry::Error::Internal(msg)) => Err(EngineError::new(
+            Err(retry::Error::Internal(msg)) => Err(LegacyEngineError::new(
                 EngineErrorCause::Internal,
                 self.engine_error_scope(),
                 self.context().execution_id(),
@@ -1157,7 +1158,7 @@ impl<'a> EKS<'a> {
         }
     }
 
-    fn delete_error(&self) -> Result<(), EngineError> {
+    fn delete_error(&self) -> Result<(), LegacyEngineError> {
         // FIXME What should we do if something goes wrong while deleting the cluster?
         Ok(())
     }
@@ -1212,12 +1213,12 @@ impl<'a> Kubernetes for EKS<'a> {
         &self.s3
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         Ok(())
     }
 
     #[named]
-    fn on_create(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1228,7 +1229,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_create_error(&self) -> Result<(), EngineError> {
+    fn on_create_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1238,7 +1239,7 @@ impl<'a> Kubernetes for EKS<'a> {
         send_progress_on_long_task(self, Action::Create, || self.create_error())
     }
 
-    fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), EngineError> {
+    fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), LegacyEngineError> {
         let listeners_helper = ListenersHelper::new(&self.listeners);
         self.send_to_customer(
             format!(
@@ -1400,7 +1401,7 @@ impl<'a> Kubernetes for EKS<'a> {
         ) {
             Ok(_) => {}
             Err(e) => {
-                return Err(EngineError {
+                return Err(LegacyEngineError {
                     cause: EngineErrorCause::Internal,
                     scope: EngineErrorScope::Engine,
                     execution_id: self.context.execution_id().to_string(),
@@ -1454,7 +1455,7 @@ impl<'a> Kubernetes for EKS<'a> {
         ) {
             Ok(_) => {}
             Err(e) => {
-                return Err(EngineError {
+                return Err(LegacyEngineError {
                     cause: EngineErrorCause::Internal,
                     scope: EngineErrorScope::Engine,
                     execution_id: self.context.execution_id().to_string(),
@@ -1467,7 +1468,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_upgrade(&self) -> Result<(), EngineError> {
+    fn on_upgrade(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1478,7 +1479,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_upgrade_error(&self) -> Result<(), EngineError> {
+    fn on_upgrade_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1489,7 +1490,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_downgrade(&self) -> Result<(), EngineError> {
+    fn on_downgrade(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1500,7 +1501,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_downgrade_error(&self) -> Result<(), EngineError> {
+    fn on_downgrade_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1511,7 +1512,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_pause(&self) -> Result<(), EngineError> {
+    fn on_pause(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1522,7 +1523,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_pause_error(&self) -> Result<(), EngineError> {
+    fn on_pause_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1533,7 +1534,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_delete(&self) -> Result<(), EngineError> {
+    fn on_delete(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1544,7 +1545,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn on_delete_error(&self) -> Result<(), EngineError> {
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1555,7 +1556,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn deploy_environment(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn deploy_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1566,7 +1567,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn deploy_environment_error(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn deploy_environment_error(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1577,7 +1578,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn pause_environment(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn pause_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1588,7 +1589,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn pause_environment_error(&self, _environment: &Environment) -> Result<(), EngineError> {
+    fn pause_environment_error(&self, _environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1599,7 +1600,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn delete_environment(&self, environment: &Environment) -> Result<(), EngineError> {
+    fn delete_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),
@@ -1610,7 +1611,7 @@ impl<'a> Kubernetes for EKS<'a> {
     }
 
     #[named]
-    fn delete_environment_error(&self, _environment: &Environment) -> Result<(), EngineError> {
+    fn delete_environment_error(&self, _environment: &Environment) -> Result<(), LegacyEngineError> {
         print_action(
             self.cloud_provider_name(),
             self.struct_name(),

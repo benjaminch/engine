@@ -33,6 +33,7 @@ use qovery_engine::cloud_provider::scaleway::Scaleway;
 use qovery_engine::cloud_provider::{CloudProvider, Kind};
 use qovery_engine::cmd::structs::SVCItem;
 use qovery_engine::engine::Engine;
+use qovery_engine::logs::LogManager;
 use qovery_engine::models::DatabaseMode::CONTAINER;
 use qovery_engine::transaction::DeploymentOption;
 use std::collections::BTreeMap;
@@ -54,18 +55,21 @@ pub trait Cluster<T, U> {
 pub trait Infrastructure {
     fn deploy_environment(
         &self,
+        log_manager: &LogManager,
         provider_kind: Kind,
         context: &Context,
         environment_action: &EnvironmentAction,
     ) -> TransactionResult;
     fn pause_environment(
         &self,
+        log_manager: &LogManager,
         provider_kind: Kind,
         context: &Context,
         environment_action: &EnvironmentAction,
     ) -> TransactionResult;
     fn delete_environment(
         &self,
+        log_manager: &LogManager,
         provider_kind: Kind,
         context: &Context,
         environment_action: &EnvironmentAction,
@@ -75,6 +79,7 @@ pub trait Infrastructure {
 impl Infrastructure for Environment {
     fn deploy_environment(
         &self,
+        log_manager: &LogManager,
         provider_kind: Kind,
         context: &Context,
         environment_action: &EnvironmentAction,
@@ -95,7 +100,7 @@ impl Infrastructure for Environment {
             Kind::Scw => Scaleway::cloud_provider(context),
         };
         let k;
-        k = get_environment_test_kubernetes(provider_kind, context, cp.as_ref(), &dns_provider);
+        k = get_environment_test_kubernetes(log_manager, provider_kind, context, cp.as_ref(), &dns_provider);
 
         let _ = tx.deploy_environment_with_options(
             k.as_ref(),
@@ -111,6 +116,7 @@ impl Infrastructure for Environment {
 
     fn pause_environment(
         &self,
+        log_manager: &LogManager,
         provider_kind: Kind,
         context: &Context,
         environment_action: &EnvironmentAction,
@@ -132,7 +138,7 @@ impl Infrastructure for Environment {
             Kind::Scw => Scaleway::cloud_provider(context),
         };
         let k;
-        k = get_environment_test_kubernetes(provider_kind, context, cp.as_ref(), &dns_provider);
+        k = get_environment_test_kubernetes(log_manager, provider_kind, context, cp.as_ref(), &dns_provider);
 
         let _ = tx.pause_environment(k.as_ref(), &environment_action);
 
@@ -141,6 +147,7 @@ impl Infrastructure for Environment {
 
     fn delete_environment(
         &self,
+        log_manager: &LogManager,
         provider_kind: Kind,
         context: &Context,
         environment_action: &EnvironmentAction,
@@ -162,7 +169,7 @@ impl Infrastructure for Environment {
             Kind::Scw => Scaleway::cloud_provider(context),
         };
         let k;
-        k = get_environment_test_kubernetes(provider_kind, context, cp.as_ref(), &dns_provider);
+        k = get_environment_test_kubernetes(log_manager, provider_kind, context, cp.as_ref(), &dns_provider);
 
         let _ = tx.delete_environment(k.as_ref(), &environment_action);
 
@@ -820,6 +827,7 @@ pub fn environment_only_http_server_router(context: &Context, organization_id: &
 }
 
 pub fn test_db(
+    log_manager: &LogManager,
     context: Context,
     mut environment: Environment,
     secrets: FuncTestsSecrets,
@@ -910,7 +918,7 @@ pub fn test_db(
     let ea = EnvironmentAction::Environment(environment.clone());
     let ea_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-    match environment.deploy_environment(provider_kind.clone(), &context, &ea) {
+    match environment.deploy_environment(log_manager, provider_kind.clone(), &context, &ea) {
         TransactionResult::Ok => assert!(true),
         TransactionResult::Rollback(_) => assert!(false),
         TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -1003,7 +1011,7 @@ pub fn test_db(
         }
     }
 
-    match environment_delete.delete_environment(provider_kind.clone(), &context_for_delete, &ea_delete) {
+    match environment_delete.delete_environment(log_manager, provider_kind.clone(), &context_for_delete, &ea_delete) {
         TransactionResult::Ok => assert!(true),
         TransactionResult::Rollback(_) => assert!(false),
         TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -1013,6 +1021,7 @@ pub fn test_db(
 }
 
 pub fn get_environment_test_kubernetes<'a>(
+    log_manager: &'a LogManager,
     provider_kind: Kind,
     context: &Context,
     cloud_provider: &'a dyn CloudProvider,
@@ -1082,6 +1091,7 @@ pub fn get_environment_test_kubernetes<'a>(
                 .expect("SCALEWAY_TEST_CLUSTER_ID is not set");
             k = Box::new(
                 Kapsule::new(
+                    log_manager,
                     context.clone(),
                     cluster_id.to_string(),
                     uuid::Uuid::new_v4(),
@@ -1109,6 +1119,7 @@ pub fn get_environment_test_kubernetes<'a>(
 }
 
 pub fn get_cluster_test_kubernetes<'a>(
+    log_manager: &'a LogManager,
     provider_kind: Kind,
     secrets: FuncTestsSecrets,
     context: &Context,
@@ -1162,6 +1173,7 @@ pub fn get_cluster_test_kubernetes<'a>(
         Kind::Scw => {
             k = Box::new(
                 Kapsule::new(
+                    log_manager,
                     context.clone(),
                     cluster_id.clone(),
                     uuid::Uuid::new_v4(),
@@ -1183,6 +1195,7 @@ pub fn get_cluster_test_kubernetes<'a>(
 
 pub fn cluster_test(
     test_name: &str,
+    log_manager: &LogManager,
     provider_kind: Kind,
     context: Context,
     localisation: &str,
@@ -1220,6 +1233,7 @@ pub fn cluster_test(
         Kind::Scw => Scaleway::cloud_provider(&context),
     };
     let kubernetes = get_cluster_test_kubernetes(
+        log_manager,
         provider_kind.clone(),
         secrets.clone(),
         &context,
@@ -1286,6 +1300,7 @@ pub fn cluster_test(
         ClusterTestType::WithUpgrade => {
             let upgrade_to_version = format!("{}.{}", major_boot_version, minor_boot_version.clone() + 1);
             let upgraded_kubernetes = get_cluster_test_kubernetes(
+                log_manager,
                 provider_kind.clone(),
                 secrets.clone(),
                 &context,

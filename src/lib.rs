@@ -16,6 +16,7 @@ pub mod error;
 pub mod errors;
 pub mod fs;
 pub mod git;
+pub mod logs;
 pub mod models;
 pub mod object_storage;
 pub mod runtime;

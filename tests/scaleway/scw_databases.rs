@@ -8,9 +8,10 @@ use qovery_engine::models::{
 use qovery_engine::transaction::TransactionResult;
 use test_utilities::utilities::{
     context, engine_run_test, generate_id, generate_password, get_pods, get_svc_name, init, is_pod_restarted_env,
-    FuncTestsSecrets,
+    log_manager, FuncTestsSecrets,
 };
 
+use qovery_engine::logs::LogManager;
 use qovery_engine::models::DatabaseMode::{CONTAINER, MANAGED};
 use test_utilities::common::Infrastructure;
 use test_utilities::common::{test_db, working_minimal_environment};
@@ -37,6 +38,8 @@ fn deploy_an_environment_with_3_databases_and_3_apps() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
+
         let context = context();
         let context_for_deletion = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -61,13 +64,14 @@ fn deploy_an_environment_with_3_databases_and_3_apps() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_deletion, &env_action_delete) {
+        match environment_delete.delete_environment(&log_manager, Kind::Scw, &context_for_deletion, &env_action_delete)
+        {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -92,6 +96,8 @@ fn deploy_an_environment_with_db_and_pause_it() {
 
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
+
+        let log_manager = log_manager();
 
         let context = context();
         let context_for_deletion = context.clone_not_same_execution_id();
@@ -118,13 +124,13 @@ fn deploy_an_environment_with_db_and_pause_it() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match environment.pause_environment(Kind::Scw, &context, &env_action) {
+        match environment.pause_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -146,7 +152,8 @@ fn deploy_an_environment_with_db_and_pause_it() {
         assert_eq!(ret.is_ok(), true);
         assert_eq!(ret.unwrap().items.is_empty(), true);
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_deletion, &env_action_delete) {
+        match environment_delete.delete_environment(&log_manager, Kind::Scw, &context_for_deletion, &env_action_delete)
+        {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -173,6 +180,7 @@ fn postgresql_failover_dev_environment_with_all_options() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let context_for_deletion = context.clone_not_same_execution_id();
         let secrets = FuncTestsSecrets::new();
@@ -223,7 +231,7 @@ fn postgresql_failover_dev_environment_with_all_options() {
         let env_action_fail_ok = EnvironmentAction::EnvironmentWithFailover(environment_never_up, environment.clone());
         let env_action_for_deletion = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -244,7 +252,7 @@ fn postgresql_failover_dev_environment_with_all_options() {
             (true, _) => assert!(true),
             (false, _) => assert!(false),
         }
-        match environment_check.deploy_environment(Kind::Scw, &context, &env_action_fail_ok) {
+        match environment_check.deploy_environment(&log_manager, Kind::Scw, &context, &env_action_fail_ok) {
             TransactionResult::Ok => assert!(false),
             TransactionResult::Rollback(_) => assert!(true),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -265,7 +273,12 @@ fn postgresql_failover_dev_environment_with_all_options() {
             (false, _) => assert!(false),
         }
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_deletion, &env_action_for_deletion) {
+        match environment_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_deletion,
+            &env_action_for_deletion,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -292,6 +305,7 @@ fn postgresql_deploy_a_working_development_environment_with_all_options() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let context = context();
         let secrets = FuncTestsSecrets::new();
         let context_for_deletion = context.clone_not_same_execution_id();
@@ -330,13 +344,18 @@ fn postgresql_deploy_a_working_development_environment_with_all_options() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_for_deletion = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_deletion, &env_action_for_deletion) {
+        match environment_delete.delete_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_deletion,
+            &env_action_for_deletion,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -368,6 +387,7 @@ fn postgresql_deploy_a_working_environment_and_redeploy() {
         let span = span!(Level::INFO, "test", name = test_name);
         let _enter = span.enter();
 
+        let log_manager = log_manager();
         let secrets = FuncTestsSecrets::new();
         let context = context();
         let context_for_redeploy = context.clone_not_same_execution_id();
@@ -455,12 +475,17 @@ fn postgresql_deploy_a_working_environment_and_redeploy() {
         let env_action = EnvironmentAction::Environment(environment.clone());
         let env_action_delete = EnvironmentAction::Environment(environment_delete.clone());
 
-        match environment.deploy_environment(Kind::Scw, &context, &env_action) {
+        match environment.deploy_environment(&log_manager, Kind::Scw, &context, &env_action) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
         };
-        match environment_to_redeploy.deploy_environment(Kind::Scw, &context_for_redeploy, &env_action_redeploy) {
+        match environment_to_redeploy.deploy_environment(
+            &log_manager,
+            Kind::Scw,
+            &context_for_redeploy,
+            &env_action_redeploy,
+        ) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(false),
@@ -482,7 +507,7 @@ fn postgresql_deploy_a_working_environment_and_redeploy() {
             (false, _) => assert!(false),
         }
 
-        match environment_delete.delete_environment(Kind::Scw, &context_for_delete, &env_action_delete) {
+        match environment_delete.delete_environment(&log_manager, Kind::Scw, &context_for_delete, &env_action_delete) {
             TransactionResult::Ok => assert!(true),
             TransactionResult::Rollback(_) => assert!(false),
             TransactionResult::UnrecoverableError(_, _) => assert!(true),
@@ -504,6 +529,7 @@ fn postgresql_deploy_a_working_environment_and_redeploy() {
  **/
 #[allow(dead_code)]
 fn test_postgresql_configuration(
+    log_manager: &LogManager,
     context: Context,
     environment: Environment,
     secrets: FuncTestsSecrets,
@@ -514,6 +540,7 @@ fn test_postgresql_configuration(
 ) {
     engine_run_test(|| {
         test_db(
+            log_manager,
             context,
             environment,
             secrets,
@@ -547,7 +574,16 @@ fn private_postgresql_v10_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "10", function_name!(), CONTAINER, false);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "10",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -569,7 +605,16 @@ fn public_postgresql_v10_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "10", function_name!(), CONTAINER, true);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "10",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -591,7 +636,16 @@ fn private_postgresql_v11_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "11", function_name!(), CONTAINER, false);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "11",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -613,7 +667,16 @@ fn public_postgresql_v11_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "11", function_name!(), CONTAINER, true);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "11",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -635,7 +698,16 @@ fn private_postgresql_v12_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "12", function_name!(), CONTAINER, false);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "12",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -657,7 +729,16 @@ fn public_postgresql_v12_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "12", function_name!(), CONTAINER, true);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "12",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 // Postgres production environment
@@ -681,7 +762,16 @@ fn private_postgresql_v10_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "10", function_name!(), MANAGED, false);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "10",
+        function_name!(),
+        MANAGED,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-managed-services")]
@@ -704,7 +794,16 @@ fn public_postgresql_v10_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "10", function_name!(), MANAGED, true);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "10",
+        function_name!(),
+        MANAGED,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-managed-services")]
@@ -727,7 +826,16 @@ fn private_postgresql_v11_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "11", function_name!(), MANAGED, false);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "11",
+        function_name!(),
+        MANAGED,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-managed-services")]
@@ -750,7 +858,16 @@ fn public_postgresql_v11_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "11", function_name!(), MANAGED, true);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "11",
+        function_name!(),
+        MANAGED,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-managed-services")]
@@ -773,7 +890,16 @@ fn private_postgresql_v12_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "12", function_name!(), MANAGED, false);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "12",
+        function_name!(),
+        MANAGED,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-managed-services")]
@@ -796,7 +922,16 @@ fn public_postgresql_v12_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_postgresql_configuration(context, environment, secrets, "12", function_name!(), MANAGED, true);
+    test_postgresql_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "12",
+        function_name!(),
+        MANAGED,
+        true,
+    );
 }
 
 /**
@@ -806,6 +941,7 @@ fn public_postgresql_v12_deploy_a_working_prod_environment() {
  **/
 #[allow(dead_code)]
 fn test_mongodb_configuration(
+    log_manager: &LogManager,
     context: Context,
     environment: Environment,
     secrets: FuncTestsSecrets,
@@ -816,6 +952,7 @@ fn test_mongodb_configuration(
 ) {
     engine_run_test(|| {
         test_db(
+            log_manager,
             context,
             environment,
             secrets,
@@ -849,7 +986,16 @@ fn private_mongodb_v3_6_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "3.6", function_name!(), CONTAINER, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "3.6",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -871,7 +1017,16 @@ fn public_mongodb_v3_6_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "3.6", function_name!(), CONTAINER, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "3.6",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -893,7 +1048,16 @@ fn private_mongodb_v4_0_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "4.0", function_name!(), CONTAINER, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "4.0",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -915,7 +1079,16 @@ fn public_mongodb_v4_0_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "4.0", function_name!(), CONTAINER, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "4.0",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -937,7 +1110,16 @@ fn private_mongodb_v4_2_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "4.2", function_name!(), CONTAINER, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "4.2",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -959,7 +1141,16 @@ fn public_mongodb_v4_2_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "4.2", function_name!(), CONTAINER, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "4.2",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -981,7 +1172,16 @@ fn private_mongodb_v4_4_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "4.4", function_name!(), CONTAINER, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "4.4",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1003,7 +1203,16 @@ fn public_mongodb_v4_4_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mongodb_configuration(context, environment, secrets, "4.4", function_name!(), CONTAINER, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "4.4",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 /**
@@ -1013,6 +1222,7 @@ fn public_mongodb_v4_4_deploy_a_working_dev_environment() {
  **/
 #[allow(dead_code)]
 fn test_mysql_configuration(
+    log_manager: &LogManager,
     context: Context,
     environment: Environment,
     secrets: FuncTestsSecrets,
@@ -1023,6 +1233,7 @@ fn test_mysql_configuration(
 ) {
     engine_run_test(|| {
         test_db(
+            log_manager,
             context,
             environment,
             secrets,
@@ -1056,7 +1267,16 @@ fn private_mysql_v5_7_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mysql_configuration(context, environment, secrets, "5.7", function_name!(), CONTAINER, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "5.7",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1078,7 +1298,16 @@ fn public_mysql_v5_7_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mysql_configuration(context, environment, secrets, "5.7", function_name!(), CONTAINER, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "5.7",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1100,7 +1329,16 @@ fn private_mysql_v8_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mysql_configuration(context, environment, secrets, "8.0", function_name!(), CONTAINER, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "8.0",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1122,7 +1360,16 @@ fn public_mysql_v8_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mysql_configuration(context, environment, secrets, "8.0", function_name!(), CONTAINER, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "8.0",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 // MySQL production environment (RDS)
@@ -1146,7 +1393,16 @@ fn private_mysql_v8_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mysql_configuration(context, environment, secrets, "8.0", function_name!(), MANAGED, false);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "8.0",
+        function_name!(),
+        MANAGED,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-managed-services")]
@@ -1169,7 +1425,16 @@ fn public_mysql_v8_deploy_a_working_prod_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_mysql_configuration(context, environment, secrets, "8.0", function_name!(), MANAGED, true);
+    test_mongodb_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "8.0",
+        function_name!(),
+        MANAGED,
+        true,
+    );
 }
 
 /**
@@ -1179,6 +1444,7 @@ fn public_mysql_v8_deploy_a_working_prod_environment() {
  **/
 #[allow(dead_code)]
 fn test_redis_configuration(
+    log_manager: &LogManager,
     context: Context,
     environment: Environment,
     secrets: FuncTestsSecrets,
@@ -1189,6 +1455,7 @@ fn test_redis_configuration(
 ) {
     engine_run_test(|| {
         test_db(
+            log_manager,
             context,
             environment,
             secrets,
@@ -1222,7 +1489,16 @@ fn private_redis_v5_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_redis_configuration(context, environment, secrets, "5", function_name!(), CONTAINER, false);
+    test_redis_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "5",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1244,7 +1520,16 @@ fn public_redis_v5_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_redis_configuration(context, environment, secrets, "5", function_name!(), CONTAINER, true);
+    test_redis_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "5",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1266,7 +1551,16 @@ fn private_redis_v6_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_redis_configuration(context, environment, secrets, "6", function_name!(), CONTAINER, false);
+    test_redis_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "6",
+        function_name!(),
+        CONTAINER,
+        false,
+    );
 }
 
 #[cfg(feature = "test-scw-self-hosted")]
@@ -1288,5 +1582,14 @@ fn public_redis_v6_deploy_a_working_dev_environment() {
             .expect("DEFAULT_TEST_DOMAIN is not set in secrets")
             .as_str(),
     );
-    test_redis_configuration(context, environment, secrets, "6", function_name!(), CONTAINER, true);
+    test_redis_configuration(
+        &log_manager(),
+        context,
+        environment,
+        secrets,
+        "6",
+        function_name!(),
+        CONTAINER,
+        true,
+    );
 }

@@ -26,7 +26,8 @@ use crate::cmd::kubectl::{
 use crate::dns_provider::DnsProvider;
 use crate::error::SimpleErrorKind::Other;
 use crate::error::{
-    cast_simple_error_to_engine_error, EngineError, EngineErrorCause, EngineErrorScope, SimpleError, SimpleErrorKind,
+    cast_simple_error_to_engine_error, EngineErrorCause, EngineErrorScope, LegacyEngineError, SimpleError,
+    SimpleErrorKind,
 };
 use crate::fs::workspace_directory;
 use crate::models::ProgressLevel::Info;
@@ -53,8 +54,8 @@ pub trait Kubernetes: Listen {
     fn cloud_provider(&self) -> &dyn CloudProvider;
     fn dns_provider(&self) -> &dyn DnsProvider;
     fn config_file_store(&self) -> &dyn ObjectStorage;
-    fn is_valid(&self) -> Result<(), EngineError>;
-    fn config_file(&self) -> Result<(StringPath, File), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError>;
+    fn config_file(&self) -> Result<(StringPath, File), LegacyEngineError> {
         let bucket_name = format!("qovery-kubeconfigs-{}", self.id());
         let object_key = format!("{}.yaml", self.id());
 
@@ -75,11 +76,11 @@ pub trait Kubernetes: Listen {
 
         Ok((string_path, file))
     }
-    fn config_file_path(&self) -> Result<String, EngineError> {
+    fn config_file_path(&self) -> Result<String, LegacyEngineError> {
         let (path, _) = self.config_file()?;
         Ok(path)
     }
-    fn resources(&self, _environment: &Environment) -> Result<Resources, EngineError> {
+    fn resources(&self, _environment: &Environment) -> Result<Resources, LegacyEngineError> {
         let kubernetes_config_file_path = self.config_file_path()?;
 
         let nodes = cast_simple_error_to_engine_error(
@@ -119,9 +120,9 @@ pub trait Kubernetes: Listen {
 
         Ok(resources)
     }
-    fn on_create(&self) -> Result<(), EngineError>;
-    fn on_create_error(&self) -> Result<(), EngineError>;
-    fn upgrade(&self) -> Result<(), EngineError> {
+    fn on_create(&self) -> Result<(), LegacyEngineError>;
+    fn on_create_error(&self) -> Result<(), LegacyEngineError>;
+    fn upgrade(&self) -> Result<(), LegacyEngineError> {
         let kubeconfig = match self.config_file() {
             Ok(f) => f.0,
             Err(e) => return Err(e),
@@ -139,7 +140,7 @@ pub trait Kubernetes: Listen {
                     e.message
                 );
                 error!("{}", &msg);
-                Err(EngineError {
+                Err(LegacyEngineError {
                     cause: EngineErrorCause::Internal,
                     scope: EngineErrorScope::Engine,
                     execution_id: self.context().execution_id().to_string(),
@@ -148,26 +149,26 @@ pub trait Kubernetes: Listen {
             }
         }
     }
-    fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), EngineError>;
-    fn on_upgrade(&self) -> Result<(), EngineError>;
-    fn on_upgrade_error(&self) -> Result<(), EngineError>;
-    fn on_downgrade(&self) -> Result<(), EngineError>;
-    fn on_downgrade_error(&self) -> Result<(), EngineError>;
-    fn on_pause(&self) -> Result<(), EngineError>;
-    fn on_pause_error(&self) -> Result<(), EngineError>;
-    fn on_delete(&self) -> Result<(), EngineError>;
-    fn on_delete_error(&self) -> Result<(), EngineError>;
-    fn deploy_environment(&self, environment: &Environment) -> Result<(), EngineError>;
-    fn deploy_environment_error(&self, environment: &Environment) -> Result<(), EngineError>;
-    fn pause_environment(&self, environment: &Environment) -> Result<(), EngineError>;
-    fn pause_environment_error(&self, environment: &Environment) -> Result<(), EngineError>;
-    fn delete_environment(&self, environment: &Environment) -> Result<(), EngineError>;
-    fn delete_environment_error(&self, environment: &Environment) -> Result<(), EngineError>;
+    fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), LegacyEngineError>;
+    fn on_upgrade(&self) -> Result<(), LegacyEngineError>;
+    fn on_upgrade_error(&self) -> Result<(), LegacyEngineError>;
+    fn on_downgrade(&self) -> Result<(), LegacyEngineError>;
+    fn on_downgrade_error(&self) -> Result<(), LegacyEngineError>;
+    fn on_pause(&self) -> Result<(), LegacyEngineError>;
+    fn on_pause_error(&self) -> Result<(), LegacyEngineError>;
+    fn on_delete(&self) -> Result<(), LegacyEngineError>;
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError>;
+    fn deploy_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError>;
+    fn deploy_environment_error(&self, environment: &Environment) -> Result<(), LegacyEngineError>;
+    fn pause_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError>;
+    fn pause_environment_error(&self, environment: &Environment) -> Result<(), LegacyEngineError>;
+    fn delete_environment(&self, environment: &Environment) -> Result<(), LegacyEngineError>;
+    fn delete_environment_error(&self, environment: &Environment) -> Result<(), LegacyEngineError>;
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::Kubernetes(self.id().to_string(), self.name().to_string())
     }
-    fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
-        EngineError::new(
+    fn engine_error(&self, cause: EngineErrorCause, message: String) -> LegacyEngineError {
+        LegacyEngineError::new(
             cause,
             self.engine_error_scope(),
             self.context().execution_id(),
@@ -184,7 +185,7 @@ pub trait Kubernetes: Listen {
             self.context().execution_id(),
         ))
     }
-    fn get_temp_dir(&self) -> Result<String, EngineError> {
+    fn get_temp_dir(&self) -> Result<String, LegacyEngineError> {
         workspace_directory(
             self.context().workspace_root_dir(),
             self.context().execution_id(),
@@ -192,7 +193,7 @@ pub trait Kubernetes: Listen {
         )
         .map_err(|err| self.engine_error(EngineErrorCause::Internal, err.to_string()))
     }
-    fn get_kubeconfig(&self) -> Result<StringPath, EngineError> {
+    fn get_kubeconfig(&self) -> Result<StringPath, LegacyEngineError> {
         let path = match self.config_file() {
             Ok(f) => f.0,
             Err(e) => {
@@ -231,7 +232,7 @@ pub struct Resources {
 
 /// common function to deploy a complete environment through Kubernetes and the different
 /// managed services.
-pub fn deploy_environment(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), EngineError> {
+pub fn deploy_environment(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), LegacyEngineError> {
     let listeners_helper = ListenersHelper::new(kubernetes.listeners());
 
     let stateful_deployment_target = match kubernetes.kind() {
@@ -334,7 +335,10 @@ pub fn deploy_environment(kubernetes: &dyn Kubernetes, environment: &Environment
 }
 
 /// common function to react to an error when a environment deployment goes wrong
-pub fn deploy_environment_error(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), EngineError> {
+pub fn deploy_environment_error(
+    kubernetes: &dyn Kubernetes,
+    environment: &Environment,
+) -> Result<(), LegacyEngineError> {
     let listeners_helper = ListenersHelper::new(kubernetes.listeners());
 
     listeners_helper.deployment_in_progress(ProgressInfo::new(
@@ -390,7 +394,7 @@ pub fn deploy_environment_error(kubernetes: &dyn Kubernetes, environment: &Envir
 }
 
 /// common kubernetes function to pause a complete environment
-pub fn pause_environment(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), EngineError> {
+pub fn pause_environment(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), LegacyEngineError> {
     let listeners_helper = ListenersHelper::new(kubernetes.listeners());
 
     let stateful_deployment_target = DeploymentTarget {
@@ -468,7 +472,7 @@ pub fn pause_environment(kubernetes: &dyn Kubernetes, environment: &Environment)
 }
 
 /// common kubernetes function to delete a complete environment
-pub fn delete_environment(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), EngineError> {
+pub fn delete_environment(kubernetes: &dyn Kubernetes, environment: &Environment) -> Result<(), LegacyEngineError> {
     let listeners_helper = ListenersHelper::new(kubernetes.listeners());
 
     let stateful_deployment_target = DeploymentTarget {
@@ -557,7 +561,7 @@ pub fn delete_environment(kubernetes: &dyn Kubernetes, environment: &Environment
 pub fn check_kubernetes_has_enough_resources_to_deploy_environment(
     kubernetes: &dyn Kubernetes,
     environment: &Environment,
-) -> Result<(), EngineError> {
+) -> Result<(), LegacyEngineError> {
     let resources = kubernetes.resources(environment)?;
     let required_resources = environment.required_resources();
 

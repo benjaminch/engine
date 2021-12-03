@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::Path;
 
 use crate::cloud_provider::scaleway::application::Zone;
-use crate::error::{EngineError, EngineErrorCause};
+use crate::error::{EngineErrorCause, LegacyEngineError};
 use crate::models::{Context, StringPath};
 use crate::object_storage::{Kind, ObjectStorage};
 
@@ -96,7 +96,7 @@ impl ScalewayOS {
         Ok(())
     }
 
-    fn empty_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn empty_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         // TODO(benjamin): switch to `scaleway-api-rs` once object storage will be supported (https://github.com/Qovery/scaleway-api-rs/issues/12).
         if let Err(message) = ScalewayOS::is_bucket_name_valid(bucket_name) {
             let message = format!(
@@ -180,11 +180,11 @@ impl ObjectStorage for ScalewayOS {
         self.name.as_str()
     }
 
-    fn is_valid(&self) -> Result<(), EngineError> {
+    fn is_valid(&self) -> Result<(), LegacyEngineError> {
         todo!()
     }
 
-    fn create_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn create_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         // TODO(benjamin): switch to `scaleway-api-rs` once object storage will be supported (https://github.com/Qovery/scaleway-api-rs/issues/12).
         if let Err(message) = ScalewayOS::is_bucket_name_valid(bucket_name) {
             let message = format!(
@@ -270,7 +270,7 @@ impl ObjectStorage for ScalewayOS {
         Ok(())
     }
 
-    fn delete_bucket(&self, bucket_name: &str) -> Result<(), EngineError> {
+    fn delete_bucket(&self, bucket_name: &str) -> Result<(), LegacyEngineError> {
         // TODO(benjamin): switch to `scaleway-api-rs` once object storage will be supported (https://github.com/Qovery/scaleway-api-rs/issues/12).
         if let Err(message) = ScalewayOS::is_bucket_name_valid(bucket_name) {
             let message = format!(
@@ -312,7 +312,12 @@ impl ObjectStorage for ScalewayOS {
         }
     }
 
-    fn get(&self, bucket_name: &str, object_key: &str, use_cache: bool) -> Result<(StringPath, File), EngineError> {
+    fn get(
+        &self,
+        bucket_name: &str,
+        object_key: &str,
+        use_cache: bool,
+    ) -> Result<(StringPath, File), LegacyEngineError> {
         // TODO(benjamin): switch to `scaleway-api-rs` once object storage will be supported (https://github.com/Qovery/scaleway-api-rs/issues/12).
         if let Err(message) = ScalewayOS::is_bucket_name_valid(bucket_name) {
             let message = format!(
@@ -400,7 +405,7 @@ impl ObjectStorage for ScalewayOS {
         }
     }
 
-    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), EngineError> {
+    fn put(&self, bucket_name: &str, object_key: &str, file_path: &str) -> Result<(), LegacyEngineError> {
         // TODO(benjamin): switch to `scaleway-api-rs` once object storage will be supported (https://github.com/Qovery/scaleway-api-rs/issues/12).
         if let Err(message) = ScalewayOS::is_bucket_name_valid(bucket_name) {
             let message = format!(

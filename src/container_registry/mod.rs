@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::build_platform::Image;
-use crate::error::{EngineError, EngineErrorCause, EngineErrorScope};
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::models::{Context, Listen};
 
 pub mod docker;
@@ -18,19 +18,19 @@ pub trait ContainerRegistry: Listen {
     fn name_with_id(&self) -> String {
         format!("{} ({})", self.name(), self.id())
     }
-    fn is_valid(&self) -> Result<(), EngineError>;
-    fn on_create(&self) -> Result<(), EngineError>;
-    fn on_create_error(&self) -> Result<(), EngineError>;
-    fn on_delete(&self) -> Result<(), EngineError>;
-    fn on_delete_error(&self) -> Result<(), EngineError>;
+    fn is_valid(&self) -> Result<(), LegacyEngineError>;
+    fn on_create(&self) -> Result<(), LegacyEngineError>;
+    fn on_create_error(&self) -> Result<(), LegacyEngineError>;
+    fn on_delete(&self) -> Result<(), LegacyEngineError>;
+    fn on_delete_error(&self) -> Result<(), LegacyEngineError>;
     fn does_image_exists(&self, image: &Image) -> bool;
-    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, EngineError>;
-    fn push_error(&self, image: &Image) -> Result<PushResult, EngineError>;
+    fn push(&self, image: &Image, force_push: bool) -> Result<PushResult, LegacyEngineError>;
+    fn push_error(&self, image: &Image) -> Result<PushResult, LegacyEngineError>;
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::ContainerRegistry(self.id().to_string(), self.name().to_string())
     }
-    fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
-        EngineError::new(
+    fn engine_error(&self, cause: EngineErrorCause, message: String) -> LegacyEngineError {
+        LegacyEngineError::new(
             cause,
             self.engine_error_scope(),
             self.context().execution_id(),

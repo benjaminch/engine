@@ -37,6 +37,7 @@ use qovery_engine::constants::{
     DIGITAL_OCEAN_TOKEN, SCALEWAY_ACCESS_KEY, SCALEWAY_DEFAULT_PROJECT_ID, SCALEWAY_SECRET_KEY,
 };
 use qovery_engine::error::{SimpleError, SimpleErrorKind};
+use qovery_engine::logs::Logger;
 use qovery_engine::models::{Context, Database, DatabaseKind, DatabaseMode, Environment, Features, Metadata};
 use serde::{Deserialize, Serialize};
 
@@ -48,13 +49,20 @@ use crate::digitalocean::{
 use qovery_engine::cloud_provider::digitalocean::application::Region;
 use qovery_engine::cmd::kubectl::{kubectl_get_pvc, kubectl_get_svc};
 use qovery_engine::cmd::structs::{KubernetesList, KubernetesPod, PVC, SVC};
+use qovery_engine::logs::{LogManager, StdIoLogger};
 use qovery_engine::models::DatabaseMode::MANAGED;
 use qovery_engine::object_storage::spaces::{BucketDeleteStrategy, Spaces};
 use qovery_engine::object_storage::ObjectStorage;
 use qovery_engine::runtime::block_on;
 use time::Instant;
 
+pub fn log_manager() -> LogManager {
+    LogManager::new(vec![Box::new(StdIoLogger::new())])
+}
+
 pub fn context() -> Context {
+    let cluster_id = "fake_cluster_id".to_string(); // TODO(benjaminch): Inject from external world
+    let organization_id = "fake_organisation_id".to_string(); // TODO(benjaminch): Inject from external world
     let execution_id = execution_id();
     let home_dir = std::env::var("WORKSPACE_ROOT_DIR").unwrap_or(home_dir().unwrap().to_str().unwrap().to_string());
     let lib_root_dir = std::env::var("LIB_ROOT_DIR").expect("LIB_ROOT_DIR is mandatory");
@@ -89,6 +97,8 @@ pub fn context() -> Context {
     let enabled_features = vec![Features::LogsHistory, Features::MetricsHistory];
 
     Context::new(
+        organization_id,
+        cluster_id,
         execution_id,
         home_dir,
         lib_root_dir,

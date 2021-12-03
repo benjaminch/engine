@@ -1,7 +1,7 @@
 extern crate test_utilities;
 
 use self::test_utilities::scaleway::{SCW_KUBERNETES_MAJOR_VERSION, SCW_KUBERNETES_MINOR_VERSION};
-use self::test_utilities::utilities::{context, engine_run_test, FuncTestsSecrets};
+use self::test_utilities::utilities::{context, engine_run_test, log_manager, FuncTestsSecrets};
 use ::function_name::named;
 use qovery_engine::cloud_provider::aws::kubernetes::VpcQoveryNetworkMode;
 use qovery_engine::cloud_provider::scaleway::application::Zone;
@@ -21,6 +21,7 @@ fn create_and_destroy_kapsule_cluster(
     engine_run_test(|| {
         cluster_test(
             test_name,
+            &log_manager(),
             Kind::Scw,
             context(),
             zone.as_str(),

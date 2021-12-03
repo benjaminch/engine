@@ -3,6 +3,7 @@ pub mod io;
 extern crate url;
 
 use crate::cloud_provider::Kind;
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::models::QoveryIdentifier;
 use url::Url;
 
@@ -11,21 +12,19 @@ pub struct SimpleError {
     message_safe: String,
 }
 
-#[derive(Debug)]
-pub enum LogLevel {
-    Debug,
-    Info,
+#[derive(Debug, Clone)]
+pub enum Severity {
     Warning,
-    Error,
+    Critical,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stage {
     Infrastructure(InfrastructureStep),
     Environment(EnvironmentStep),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InfrastructureStep {
     Instantiate,
     Create,
@@ -34,7 +33,7 @@ pub enum InfrastructureStep {
     Delete,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EnvironmentStep {
     Build,
     Deploy,
@@ -42,7 +41,26 @@ pub enum EnvironmentStep {
     Delete,
 }
 
-#[derive(Debug)]
+type TranmsmitterId = String;
+type TransmitterName = String;
+type TransmitterType = String;
+
+#[derive(Debug, Clone)]
+pub enum Transmitter {
+    Engine,
+    BuildPlatform(TranmsmitterId, TransmitterName),
+    ContainerRegistry(TranmsmitterId, TransmitterName),
+    CloudProvider(TranmsmitterId, TransmitterName),
+    Kubernetes(TranmsmitterId, TransmitterName),
+    DnsProvider(TranmsmitterId, TransmitterName),
+    ObjectStorage(TranmsmitterId, TransmitterName),
+    Environment(TranmsmitterId, TransmitterName),
+    Database(TranmsmitterId, TransmitterType, TransmitterName),
+    Application(TranmsmitterId, TransmitterName),
+    Router(TranmsmitterId, TransmitterName),
+}
+
+#[derive(Debug, Clone)]
 pub enum Tag {
     UnsupportedInstanceType(String),
 }
@@ -65,15 +83,16 @@ impl SimpleError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserEngineError {
     provider_kind: Kind,
     organisation_id: QoveryIdentifier,
     cluster_id: QoveryIdentifier,
     execution_id: QoveryIdentifier,
     tag: Tag,
+    transmitter: Transmitter,
     stage: Stage,
-    log_level: LogLevel,
+    severity: Severity,
     log_message: String,
     raw_message_safe: Option<String>,
     link: Option<Url>,
@@ -87,8 +106,9 @@ impl UserEngineError {
         cluster_id: QoveryIdentifier,
         execution_id: QoveryIdentifier,
         tag: Tag,
+        transmitter: Transmitter,
         stage: Stage,
-        log_level: LogLevel,
+        severity: Severity,
         log_message: String,
         raw_message_safe: Option<String>,
         link: Option<Url>,
@@ -100,8 +120,9 @@ impl UserEngineError {
             cluster_id,
             execution_id,
             tag,
+            transmitter,
             stage,
-            log_level,
+            severity,
             log_message,
             raw_message_safe,
             link,
@@ -118,17 +139,18 @@ impl From<EngineError> for UserEngineError {
             error.cluster_id,
             error.execution_id,
             error.tag,
+            error.transmitter,
             error.stage,
-            error.user_log_level,
+            error.severity,
             error.user_log_message,
-            error.raw_message_without_secrets,
+            error.raw_message_safe,
             error.link,
             error.hint_message,
         )
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EngineError {
     provider_kind: Kind,
     tag: Tag,
@@ -136,12 +158,12 @@ pub struct EngineError {
     cluster_id: QoveryIdentifier,
     execution_id: QoveryIdentifier,
     stage: Stage,
-    qovery_log_level: LogLevel,
+    transmitter: Transmitter,
+    severity: Severity,
     qovery_log_message: String,
-    user_log_level: LogLevel,
     user_log_message: String,
     raw_message: Option<String>,
-    raw_message_without_secrets: Option<String>,
+    raw_message_safe: Option<String>,
     link: Option<Url>,
     hint_message: Option<String>,
 }
@@ -159,14 +181,11 @@ impl EngineError {
     pub fn stage(&self) -> &Stage {
         &self.stage
     }
-    pub fn qovery_log_level(&self) -> &LogLevel {
-        &self.qovery_log_level
+    pub fn severity(&self) -> &Severity {
+        &self.severity
     }
     pub fn qovery_log_message(&self) -> &str {
         &self.qovery_log_message
-    }
-    pub fn user_log_level(&self) -> &LogLevel {
-        &self.user_log_level
     }
     pub fn user_log_message(&self) -> &str {
         &self.user_log_message
@@ -174,8 +193,8 @@ impl EngineError {
     pub fn raw_message(&self) -> Option<String> {
         self.raw_message.clone()
     }
-    pub fn raw_message_without_secrets(&self) -> Option<String> {
-        self.raw_message_without_secrets.clone()
+    pub fn raw_message_safe(&self) -> Option<String> {
+        self.raw_message_safe.clone()
     }
     pub fn link(&self) -> &Option<Url> {
         &self.link
@@ -187,16 +206,16 @@ impl EngineError {
     fn new(
         provider_kind: Kind,
         tag: Tag,
+        execution_id: QoveryIdentifier,
         organisation_id: QoveryIdentifier,
         cluster_id: QoveryIdentifier,
-        execution_id: QoveryIdentifier,
         stage: Stage,
-        qovery_log_level: LogLevel,
+        transmitter: Transmitter,
+        severity: Severity,
         qovery_log_message: String,
-        user_log_level: LogLevel,
         user_log_message: String,
         raw_message: Option<String>,
-        raw_message_without_secrets: Option<String>,
+        raw_message_safe: Option<String>,
         link: Option<Url>,
         hint_message: Option<String>,
     ) -> Self {
@@ -204,15 +223,15 @@ impl EngineError {
             provider_kind,
             tag,
             stage,
+            transmitter,
             organisation_id,
             cluster_id,
             execution_id,
-            qovery_log_level,
+            severity,
             qovery_log_message,
-            user_log_level,
             user_log_message,
             raw_message,
-            raw_message_without_secrets,
+            raw_message_safe,
             link,
             hint_message,
         }
@@ -220,6 +239,15 @@ impl EngineError {
 
     pub fn to_user_error(self) -> UserEngineError {
         UserEngineError::from(self)
+    }
+
+    pub fn to_legacy_engine_error(self) -> LegacyEngineError {
+        LegacyEngineError::new(
+            EngineErrorCause::Internal,
+            EngineErrorScope::from(self.transmitter),
+            self.execution_id.to_string(),
+            self.raw_message_safe,
+        )
     }
 
     pub fn new_unsupported_instance_type(
@@ -230,23 +258,22 @@ impl EngineError {
         stage: Stage,
         requested_instance_type: &str,
         raw_message: Option<String>,
-        raw_message_safe: Option<String>,
     ) -> EngineError {
         let message = format!("`{}` instance type is not supported", requested_instance_type);
         EngineError::new(
             provider_kind,
             Tag::UnsupportedInstanceType(requested_instance_type.to_string()),
             organisation_id,
-            cluster_id,
+            cluster_id.clone(),
             execution_id,
             stage,
-            LogLevel::Error,
+            Transmitter::Kubernetes(cluster_id.to_string(), cluster_id.to_string()),
+            Severity::Critical,
             message.to_string(),
-            LogLevel::Error,
-            message.to_string(),
-            raw_message,
-            raw_message_safe,
-            None, // TODO(documentation): Create a page entry to details this error
+            message,
+            raw_message.clone(),
+            raw_message, // there is no unsafe data in this message
+            None,        // TODO(documentation): Create a page entry to details this error
             Some("Selected instance type is not supported, please check provider's documentation.".to_string()),
         )
     }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cloud_provider::environment::Environment;
 use crate::cloud_provider::kubernetes::Kubernetes;
-use crate::error::{EngineError, EngineErrorCause, EngineErrorScope};
+use crate::error::{EngineErrorCause, EngineErrorScope, LegacyEngineError};
 use crate::models::{Context, Listen};
 
 pub mod aws;
@@ -32,7 +32,7 @@ pub trait CloudProvider: Listen {
     fn access_key_id(&self) -> String;
     fn secret_access_key(&self) -> String;
     fn token(&self) -> &str;
-    fn is_valid(&self) -> Result<(), EngineError>;
+    fn is_valid(&self) -> Result<(), LegacyEngineError>;
     /// environment variables containing credentials
     fn credentials_environment_variables(&self) -> Vec<(&str, &str)>;
     /// environment variables to inject to generate Terraform files from templates
@@ -41,8 +41,8 @@ pub trait CloudProvider: Listen {
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::CloudProvider(self.id().to_string(), self.name().to_string())
     }
-    fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
-        EngineError::new(
+    fn engine_error(&self, cause: EngineErrorCause, message: String) -> LegacyEngineError {
+        LegacyEngineError::new(
             cause,
             self.engine_error_scope(),
             self.context().execution_id(),
