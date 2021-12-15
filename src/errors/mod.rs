@@ -43,6 +43,10 @@ pub enum Tag {
     Unknown,
     /// UnsupportedInstanceType: represents an unsupported instance type for the given cloud provider.
     UnsupportedInstanceType,
+    /// MissingRequiredEnvironmentVariable: represents a required environment variable not set.
+    MissingRequiredEnvironmentVariable,
+    /// UnableToGetWorkspaceDirectory: unable to get or create workspace directory.
+    UnableToGetWorkspaceDirectory,
 }
 
 #[derive(Clone, Debug)]
@@ -188,6 +192,30 @@ impl EngineError {
         )
     }
 
+    /// Creates new error for missing required environment variable.
+    ///
+    /// Arguments:
+    ///
+    /// * `event_details`: Error linked event details.
+    /// * `requested_env_var`: Requested enironment variable which happens to be missing.
+    /// * `raw_message`: Error raw message such as command input / output which may contains unsafe text such as plain passwords / tokens.
+    pub fn new_missing_required_environment_variable(
+        event_details: EventDetails,
+        requested_env_var: &str,
+    ) -> EngineError {
+        let message = format!("Required `{}` environment variable is missing.", requested_env_var);
+        EngineError::new(
+            event_details,
+            Tag::MissingRequiredEnvironmentVariable,
+            message.to_string(),
+            message,
+            Some(raw_message.clone()),
+            Some(raw_message),
+            None,
+            None,
+        )
+    }
+
     /// Creates new error for unsupported instance type.
     ///
     /// Cloud provider doesn't support the requested instance type.
@@ -212,6 +240,31 @@ impl EngineError {
             Some(raw_message),
             None, // TODO(documentation): Create a page entry to details this error
             Some("Selected instance type is not supported, please check provider's documentation.".to_string()),
+        )
+    }
+
+    /// Creates new error for unsupported instance type.
+    ///
+    /// Cloud provider doesn't support the requested instance type.
+    ///
+    /// Arguments:
+    ///
+    /// * `event_details`: Error linked event details.
+    pub fn new_unable_to_get_workspace_directory(
+        event_details: EventDetails,
+        workspace_directory_path: &str,
+        raw_error_message: &str,
+    ) -> EngineError {
+        let message = format!("Unable to get workspace directory `{}`", workspace_directory_path);
+        EngineError::new(
+            event_details,
+            Tag::UnableToGetWorkspaceDirectory,
+            message.to_string(),
+            message,
+            Some(message.clone()),
+            Some(raw_error_message.to_string()),
+            None,
+            None,
         )
     }
 }

@@ -28,6 +28,7 @@ use crate::error::SimpleErrorKind::Other;
 use crate::error::{
     cast_simple_error_to_engine_error, EngineError, EngineErrorCause, EngineErrorScope, SimpleError, SimpleErrorKind,
 };
+use crate::errors::SimpleError as NewSimpleError;
 use crate::fs::workspace_directory;
 use crate::models::ProgressLevel::Info;
 use crate::models::{Action, Context, Listen, ListenersHelper, ProgressInfo, ProgressLevel, ProgressScope, StringPath};
@@ -41,12 +42,15 @@ pub trait Kubernetes: Listen {
     fn kind(&self) -> Kind;
     fn id(&self) -> &str;
     fn name(&self) -> &str;
+    
     fn name_with_id(&self) -> String {
         format!("{} ({})", self.name(), self.id())
     }
+    
     fn cluster_name(&self) -> String {
         format!("qovery-{}", self.id())
     }
+    
     fn version(&self) -> &str;
     fn region(&self) -> &str;
     fn zone(&self) -> &str;
@@ -54,6 +58,7 @@ pub trait Kubernetes: Listen {
     fn dns_provider(&self) -> &dyn DnsProvider;
     fn config_file_store(&self) -> &dyn ObjectStorage;
     fn is_valid(&self) -> Result<(), EngineError>;
+    
     fn config_file(&self) -> Result<(StringPath, File), EngineError> {
         let bucket_name = format!("qovery-kubeconfigs-{}", self.id());
         let object_key = format!("{}.yaml", self.id());
@@ -75,10 +80,12 @@ pub trait Kubernetes: Listen {
 
         Ok((string_path, file))
     }
+    
     fn config_file_path(&self) -> Result<String, EngineError> {
         let (path, _) = self.config_file()?;
         Ok(path)
     }
+    
     fn resources(&self, _environment: &Environment) -> Result<Resources, EngineError> {
         let kubernetes_config_file_path = self.config_file_path()?;
 
@@ -113,8 +120,10 @@ pub trait Kubernetes: Listen {
 
         Ok(resources)
     }
+    
     fn on_create(&self) -> Result<(), EngineError>;
     fn on_create_error(&self) -> Result<(), EngineError>;
+    
     fn upgrade(&self) -> Result<(), EngineError> {
         let kubeconfig = match self.config_file() {
             Ok(f) => f.0,
@@ -142,6 +151,7 @@ pub trait Kubernetes: Listen {
             }
         }
     }
+
     fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), EngineError>;
     fn on_upgrade(&self) -> Result<(), EngineError>;
     fn on_upgrade_error(&self) -> Result<(), EngineError>;
@@ -157,9 +167,11 @@ pub trait Kubernetes: Listen {
     fn pause_environment_error(&self, environment: &Environment) -> Result<(), EngineError>;
     fn delete_environment(&self, environment: &Environment) -> Result<(), EngineError>;
     fn delete_environment_error(&self, environment: &Environment) -> Result<(), EngineError>;
+    
     fn engine_error_scope(&self) -> EngineErrorScope {
         EngineErrorScope::Kubernetes(self.id().to_string(), self.name().to_string())
     }
+
     fn engine_error(&self, cause: EngineErrorCause, message: String) -> EngineError {
         EngineError::new(
             cause,
@@ -168,6 +180,7 @@ pub trait Kubernetes: Listen {
             Some(message),
         )
     }
+
     fn send_to_customer(&self, message: &str, listeners_helper: &ListenersHelper) {
         listeners_helper.upgrade_in_progress(ProgressInfo::new(
             ProgressScope::Infrastructure {
@@ -178,6 +191,7 @@ pub trait Kubernetes: Listen {
             self.context().execution_id(),
         ))
     }
+
     fn get_temp_dir(&self) -> Result<String, EngineError> {
         workspace_directory(
             self.context().workspace_root_dir(),
@@ -186,6 +200,7 @@ pub trait Kubernetes: Listen {
         )
         .map_err(|err| self.engine_error(EngineErrorCause::Internal, err.to_string()))
     }
+
     fn get_kubeconfig(&self) -> Result<StringPath, EngineError> {
         let path = match self.config_file() {
             Ok(f) => f.0,

@@ -203,7 +203,17 @@ impl<'a> Kapsule<'a> {
         format!("qovery-logs-{}", self.id)
     }
 
-    fn tera_context(&self) -> Result<TeraContext, LegacyEngineError> {
+    fn tera_context(&self) -> Result<TeraContext, EngineError> {
+        let event_details = EventDetails::new(
+            self.cloud_provider.kind(),
+            QoveryIdentifier::from(self.context.organization_id().to_string()),
+            QoveryIdentifier::from(self.context.cluster_id().to_string()),
+            QoveryIdentifier::from(self.context.execution_id().to_string()),
+            self.region().to_string(),
+            Stage::Infrastructure(InfrastructureStep::LoadConfiguration),
+            Transmitter::Kubernetes(self.id().to_string(), self.name().to_string()),
+        );
+
         let mut context = TeraContext::new();
 
         // Scaleway
@@ -327,7 +337,13 @@ impl<'a> Kapsule<'a> {
 
                     match env::var_os("VAULT_SECRET_ID") {
                         Some(secret_id) => context.insert("vault_secret_id", secret_id.to_str().unwrap()),
-                        None => error!("VAULT_SECRET_ID environment variable wasn't found"),
+                        None => self.logger.log(
+                            LogLevel::Error,
+                            EngineEvent::Error(EngineError::new_missing_required_environment_variable(
+                                event_details,
+                                "VAULT_SECRET_ID",
+                            )),
+                        ),
                     }
                 }
                 None => {
@@ -368,7 +384,7 @@ impl<'a> Kapsule<'a> {
         .to_string()
     }
 
-    fn create(&self) -> Result<(), LegacyEngineError> {
+    fn create(&self) -> Result<(), EngineError> {
         let event_details = EventDetails::new(
             self.cloud_provider.kind(),
             QoveryIdentifier::from(self.context.organization_id().to_string()),
@@ -409,10 +425,14 @@ impl<'a> Kapsule<'a> {
                         ),
                     );
                 }
-                Err(e) => error!(
-                    "Error detected, upgrade won't occurs, but standard deployment. {:?}",
-                    e.message
-                ),
+                Err(e) => {
+                    self.logger.log(
+                        LogLevel::Error,
+                        EngineEvent::Deploying(
+                            event_details.clone(),
+                            EventMessage::new("Error detected, upgrade won't occurs, but standard deployment.".to_string(), e.message),
+                        ));
+                }
             },
             Err(_) => self.logger.log(
                 LogLevel::Info,
@@ -420,7 +440,10 @@ impl<'a> Kapsule<'a> {
             ),
         };
 
-        let temp_dir = self.get_temp_dir()?;
+        let temp_dir = match self.get_temp_dir() {
+            Ok(dir) => dir,
+            Err(e) => return,
+        };
 
         // generate terraform files and copy them into temp dir
         let context = self.tera_context()?;
@@ -1168,16 +1191,26 @@ impl<'a> Kubernetes for Kapsule<'a> {
     }
 
     fn upgrade_with_status(&self, kubernetes_upgrade_status: KubernetesUpgradeStatus) -> Result<(), LegacyEngineError> {
-        let listeners_helper = ListenersHelper::new(&self.listeners);
-        self.send_to_customer(
-            format!(
-                "Start preparing Kapsule upgrade process {} cluster with id {}",
-                self.name(),
-                self.id()
-            )
-            .as_str(),
-            &listeners_helper,
+        let event_details = EventDetails::new(
+            self.cloud_provider.kind(),
+            QoveryIdentifier::from(self.context.organization_id().to_string()),
+            QoveryIdentifier::from(self.context.cluster_id().to_string()),
+            QoveryIdentifier::from(self.context.execution_id().to_string()),
+            self.region().to_string(),
+            Stage::Infrastructure(InfrastructureStep::Upgrade),
+            Transmitter::Kubernetes(self.id().to_string(), self.name().to_string()),
         );
+
+        // TODO(DEV-1061): remove legacy logger
+        let message = format!(
+            "Start preparing Kapsule upgrade process {} cluster with id {}",
+            self.name(),
+            self.id(),
+        );
+        let listeners_helper = ListenersHelper::new(&self.listeners);
+        self.send_to_customer(message.as_str(), &listeners_helper);
+        self.logger.log(LogLevel::Info, EngineEvent::Deploying(event_details.clone(), EventMessage::new(message.to_string(), None)));
+
 
         let temp_dir = match self.get_temp_dir() {
             Ok(dir) => dir,
